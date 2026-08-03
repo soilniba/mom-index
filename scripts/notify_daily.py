@@ -91,8 +91,8 @@ def _sector_card(name: str, emoji: str, sector: dict) -> str:
         f"**{emoji} {name} · 宝妈指数**\n\n"
         f"# {index}\n\n"
         f"{sector.get('interpretation', '')}\n\n"
-        f"🟢 宝妈买入 **{d.get('mom_buy_index', 0) or 0}**"
-        f"  |  🔴 宝妈卖出 **{d.get('mom_sell_index', 0) or 0}**\n"
+        f"宝妈买入 **{d.get('mom_buy_index', 0) or 0}**"
+        f"  |  宝妈卖出 **{d.get('mom_sell_index', 0) or 0}**\n"
         f"买卖比 {ratio_str}\n"
         f"小白帖 **{d.get('newbie_posts', 0)} / {valid} ({d.get('newbie_ratio', 0)}%)**"
     )
