@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -320,7 +320,7 @@ function renderTopPosts(data) {
   const container = document.getElementById('top-posts');
   const latest = data.latest;
   if (!latest) {
-    container.innerHTML += '<div class="loading">暂无数据</div>';
+    container.innerHTML = '<div class="loading">暂无数据</div>';
     return;
   }
 
@@ -337,14 +337,14 @@ function renderTopPosts(data) {
   allTop = allTop.slice(0, 8);
 
   if (!allTop.length) {
-    container.innerHTML += '<div class="loading">今日暂无典型小白帖</div>';
+    container.innerHTML = '<div class="loading">今日暂无典型小白帖</div>';
     return;
   }
 
   const badgeClass = score => score >= 50 ? 'pure' : 'semi';
   const badgeText = score => score >= 50 ? '纯小白' : '偏小白';
 
-  container.innerHTML += allTop.map(p => `
+  container.innerHTML = allTop.map(p => `
   <div class="post-item">
     <div class="post-title">
       <span class="post-badge ${badgeClass(p.score)}">${badgeText(p.score)} ${p.score}分</span>
