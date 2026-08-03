@@ -358,16 +358,16 @@ function renderTopPosts(data) {
   `).join('');
 }
 
-// 加载数据
+// 加载数据（各渲染独立容错：Chart.js CDN 加载失败不影响卡片与 Top 帖）
 fetch('data/dashboard_data.json')
   .then(r => r.json())
   .then(data => {
     renderCards(data);
-    renderCharts(data);
-    renderTopPosts(data);
+    try { renderCharts(data); } catch (e) { console.error('图表渲染失败:', e); }
+    try { renderTopPosts(data); } catch (e) { console.error('Top帖渲染失败:', e); }
   })
   .catch(err => {
-    document.getElementById('cards').innerHTML = 
+    document.getElementById('cards').innerHTML =
       `<div class="loading">⚠️ 数据加载失败: ${err.message}<br>请先运行 pipeline.py 生成数据</div>`;
   });
 </script>
