@@ -350,7 +350,7 @@ function renderTopPosts(data) {
       <span class="post-badge ${badgeClass(p.score)}">${badgeText(p.score)} ${p.score}分</span>
       <span style="color:#64748b;font-size:11px">[${p.sector}]</span>
       ${p.intent_label ? `<span style="font-size:11px;margin-left:4px">${p.intent_label}</span>` : ''}
-      ${p.title}
+      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:#7dd3fc;text-decoration:none">${p.title}</a>` : p.title}
     </div>
     ${p.reasoning ? `<div class="post-reason">📝 ${p.reasoning}</div>` : ''}
     ${p.key_signals ? p.key_signals.map(s => `<div class="post-meta">▸ ${s}</div>`).join('') : ''}
