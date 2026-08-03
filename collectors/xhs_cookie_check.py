@@ -21,6 +21,16 @@ ENV_FILE = Path("~/.config/mom-index/env").expanduser()
 VAR_NAME = "XHS_COOKIE"
 
 
+def _notify(reason: str) -> None:
+    """发 cookie 告警到飞书（通知失败静默，不影响退出码）。"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from notify_feishu import send_notice
+        send_notice(f"**⚠️ 小红书 Cookie 问题**\n{reason}", summary="小红书 Cookie 告警")
+    except Exception:
+        pass
+
+
 def get_cookie() -> str:
     """优先环境变量，其次 source env 文件。"""
     cookie = os.environ.get(VAR_NAME, "")
@@ -50,6 +60,33 @@ def parse_cookies(cookie_str: str) -> list[dict]:
     return cookies
 
 
+def merge_cookies(original: str, ctx_cookies: list[dict]) -> str:
+    """仅更新服务端变更的字段：保留原字段，覆盖变化项，追加新增项。
+
+    不做全量覆盖——context 里注入后未变的字段保持原值，
+    避免把页面新产生的指纹 cookie 混入 env 破坏与浏览器的一致性。
+    """
+    order: list[str] = []
+    old: dict[str, str] = {}
+    for pair in original.split(";"):
+        pair = pair.strip()
+        if not pair or "=" not in pair:
+            continue
+        k, v = pair.split("=", 1)
+        k = k.strip()
+        if k not in old:
+            order.append(k)
+        old[k] = v.strip()
+    new = {c["name"]: c["value"] for c in ctx_cookies}
+    parts = []
+    for k in order:
+        parts.append(f"{k}={new.get(k, old[k])}")
+    for k in new:
+        if k not in old:
+            parts.append(f"{k}={new[k]}")
+    return "; ".join(parts)
+
+
 def update_env_cookie(new_cookie: str) -> bool:
     """原子替换 env 文件中 XHS_COOKIE 值。"""
     if "'" in new_cookie:
@@ -74,12 +111,6 @@ def update_env_cookie(new_cookie: str) -> bool:
     except Exception as e:
         print(f"[xhs_check] 写入 env 失败: {e}", file=sys.stderr)
         return False
-
-
-async def _ctx_cookies(ctx) -> str:
-    """把 context 中最新 cookie（含服务端 Set-Cookie 更新）序列化为 header string。"""
-    cookies = await ctx.cookies("https://www.xiaohongshu.com/")
-    return "; ".join(f"{c['name']}={c['value']}" for c in cookies)
 
 
 async def verify(cookie: str) -> tuple[bool, str, str | None]:
@@ -122,7 +153,7 @@ async def verify(cookie: str) -> tuple[bool, str, str | None]:
             if not token and me_el == 0:
                 return False, "cookie 无登录态（未登录或已失效）", None
 
-            refreshed = await _ctx_cookies(ctx)
+            refreshed = merge_cookies(cookie, await ctx.cookies("https://www.xiaohongshu.com/"))
             return True, "登录态有效", refreshed
         finally:
             await browser.close()
@@ -132,16 +163,19 @@ def main() -> int:
     cookie = get_cookie()
     if not cookie:
         print(f"[xhs_check] 未设置 {VAR_NAME}", file=sys.stderr)
+        _notify(f"未设置 {VAR_NAME}，请更新 {ENV_FILE}")
         return 1
 
     try:
         ok, reason, refreshed = asyncio.run(verify(cookie))
     except Exception as e:
         print(f"[xhs_check] 验证异常: {e}", file=sys.stderr)
+        _notify(f"验证异常: {e}")
         return 3
 
     if not ok:
         print(f"[xhs_check] {reason}", file=sys.stderr)
+        _notify(f"{reason}\n请重新导出 cookie 写入 {ENV_FILE}")
         return 2
 
     # 验证通过：写回最新 cookie（服务端可能已更新/续期）

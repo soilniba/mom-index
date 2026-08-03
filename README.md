@@ -56,6 +56,8 @@
 mom-index/
 ├── pipeline.py                  # 主流程：采集→分析→指数→存储
 ├── sync_data.py                 # 数据同步脚本（data/ → frontend/data/）
+├── scripts/
+│   └── notify_feishu.py         # 飞书告警（瞎报错群，经本机 feishu-bot relay）
 ├── collectors/
 │   ├── anti_detection.py        # 反检测核心：UA轮换+隐身+延迟
 │   ├── guba_collector.py        # 东方财富股吧采集（✅ 生产可用）

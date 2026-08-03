@@ -56,3 +56,6 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
 - Cookie 等同密码：`web_session` 泄露等于账号泄露，勿提交 git（env 文件在 git 外）
 - Cookie 有效期 7-30 天；网页端登录后不能退出登录，退出即失效
 - 风控：访问频繁会触发「安全限制」，验证脚本退出码 2 即被拦截
+- **自动告警**：cookie 未设置/失效/风控、采集 0 条、pipeline 异常都会自动发飞书「瞎报错」群
+  （经本机 feishu-bot relay，`scripts/notify_feishu.py`）
+- 续期只更新服务端变更的字段（`merge_cookies`），不覆盖 env 中未变化的字段

@@ -17,12 +17,12 @@ from typing import Dict, List
 from urllib.parse import quote
 
 try:
-    from .xhs_cookie_check import get_cookie, parse_cookies, update_env_cookie, _ctx_cookies
+    from .xhs_cookie_check import get_cookie, parse_cookies, update_env_cookie, merge_cookies
     from .anti_detection import get_anti_detection
 except ImportError:
     # 独立执行（python3 collectors/xhs_playwright.py）时无包上下文
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from xhs_cookie_check import get_cookie, parse_cookies, update_env_cookie, _ctx_cookies
+    from xhs_cookie_check import get_cookie, parse_cookies, update_env_cookie, merge_cookies
     from anti_detection import get_anti_detection
 
 _ad = get_anti_detection()
@@ -156,18 +156,32 @@ def collect_all() -> Dict[str, List[Dict]]:
                     result[sector_key] = unique
                     print(f"  [小红书-{sector_key}] 采集到 {len(unique)} 条")
 
-                # 采集完成：写回服务端最新 cookie（自动续期）
-                try:
-                    refreshed = await _ctx_cookies(ctx)
-                    if refreshed and refreshed != cookie and update_env_cookie(refreshed):
-                        print("  ✅ 小红书 cookie 已自动续期写回")
-                except Exception as e:
-                    print(f"  ⚠️ cookie 续期写回失败: {e}")
+                # 采集完成：有数据才写回服务端最新 cookie（仅更新变化的字段）。
+                # 0 条 = 风控/失效，写回会用无效状态污染真实 cookie，必须跳过。
+                if sum(len(v) for v in result.values()) > 0:
+                    try:
+                        refreshed = merge_cookies(cookie, await ctx.cookies("https://www.xiaohongshu.com/"))
+                        if refreshed != cookie and update_env_cookie(refreshed):
+                            print("  ✅ 小红书 cookie 已自动续期写回（仅更新变化字段）")
+                    except Exception as e:
+                        print(f"  ⚠️ cookie 续期写回失败: {e}")
                 return result
             finally:
                 await browser.close()
 
-    return asyncio.run(_run())
+    result = asyncio.run(_run())
+    if sum(len(v) for v in result.values()) == 0:
+        # 有 cookie 但全板块 0 条：风控/失效/页面结构变更，告警到飞书
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+            from notify_feishu import send_notice
+            send_notice(
+                "**⚠️ 小红书采集失败**\n所有板块 0 条，可能原因：风控拦截 / Cookie 失效 / 页面结构变更",
+                summary="小红书采集告警",
+            )
+        except Exception:
+            pass
+    return result
 
 
 if __name__ == "__main__":

@@ -170,8 +170,22 @@ def interpret(idx):
 
 
 if __name__ == "__main__":
-    # 先跑真实采集
-    dashboard = run_pipeline()
+    try:
+        # 先跑真实采集
+        dashboard = run_pipeline()
+    except Exception:
+        # 主流程异常 → 飞书告警（通知失败不掩盖原始异常）
+        import traceback
+        try:
+            from scripts.notify_feishu import send_notice
+            tb = traceback.format_exc()
+            send_notice(
+                f"**⚠️ 宝妈指数 Pipeline 异常**\n```\n{tb[-1500:]}\n```",
+                summary="pipeline 异常",
+            )
+        except Exception:
+            pass
+        raise
     
     # 如果历史数据不够，补充模拟数据
     if dashboard["record_count"] < 5:
