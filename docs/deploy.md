@@ -20,6 +20,7 @@
 |------|------|------|
 | mom-index-web.service | `~/.config/systemd/user/mom-index-web.service` | python3 http.server，`WorkingDirectory=frontend/`，端口 8765 |
 | mom-index-frpc.service | `~/.config/systemd/user/mom-index-frpc.service` | 用户级 frpc，配置 `~/.config/mom-index/frpc.toml`（从系统 frpc 模板派生，仅含 mom-index 代理） |
+| mom-index-collect.timer / .service | `~/.config/systemd/user/` | 每日自动采集：工作日 07:30 UTC（北京 15:30，A股收盘后），`Persistent=true` 错过补跑 |
 | frpc 代理 | name=`mom-index-web`，local 127.0.0.1:8765 → remote 8765 | 与 cookie-server/renming 同模式 |
 
 常用命令：
@@ -55,14 +56,24 @@ location /mom/ {
 
 ## 数据刷新
 
-页面数据来自 `frontend/data/dashboard_data.json`（git 已提交的快照）。刷新：
+页面数据来自 `frontend/data/dashboard_data.json`（git 已提交的快照）。**每日自动刷新**：`mom-index-collect.timer` 工作日 07:30 UTC（北京 15:30）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。
+
+手动刷新：
 
 ```bash
-cd ~/projects/mom-index && python pipeline.py   # 采集+分析+写 data/
-python sync_data.py                              # 同步到 frontend/data/
+systemctl --user start mom-index-collect.service   # 等价于手动跑一次
+cd ~/projects/mom-index && python pipeline.py
 ```
 
-无需重启服务（静态文件）。
+常用命令：
+
+```bash
+systemctl --user list-timers mom-index-collect*
+journalctl --user -u mom-index-collect -f
+```
+
+> 注意：系统时区是 UTC。timer 的 OnCalendar 按系统本地时区（UTC）写，北京 15:30 = UTC 07:30，改时间别改错时区。
+> 每日自动采集只更新本地/线上数据文件，**不自动 git commit**——仓库数据快照保持手动提交。
 
 ## 踩坑记录
 

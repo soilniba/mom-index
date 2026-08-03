@@ -172,7 +172,7 @@ cd frontend && python -m http.server 8765
 - [ ] 小红书稳定数据源（rnote.dev 充值 或 x-mcp 解风控）
 - [ ] LLM 语义分类替换关键词规则
 - [ ] 抖音/微博数据源扩展
-- [ ] 定时自动采集（cron job）
+- [x] 定时自动采集（systemd user timer，工作日北京 15:30，见 docs/deploy.md）
 - [ ] 每日宝妈指数自动推送（微信/Telegram）
 - [ ] 回测验证：拿历史数据验证指数与市场顶底的相关性
 
