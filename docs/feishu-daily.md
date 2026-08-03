@@ -20,7 +20,11 @@
 - 股吧帖子：采集器直接带 `url` 字段（`https://guba.eastmoney.com/...`）
 - 小红书帖子：搜索 API 返回的 `xsec_token` 拼分享链接
   `https://www.xiaohongshu.com/explore/{id}?xsec_token={token}&xsec_source=pc_search`——
-  **explore 直链会被风控拦截（"笔记暂时无法浏览"），必须带 token**
+  **explore 直链会被风控拦截（"笔记暂时无法浏览"），必须带 token**；
+  `discovery/item/{id}?xsec_token=...`（xhslink.cn 短链的跳转目标）同样有效，两种格式
+  均经 playwright 真实浏览器验证可打开
+- **xhslink.cn 短链无法程序化生成**：无公开 API，仅小红书 APP 分享功能产生；
+  其跳转目标就是带 token 的 discovery/item 链接，与上述链接等价
 
 链接经 `analyzer/llm_analyzer.py` 的 `_post_url()` 存入 `AnalysisResult.url`，
 随 `top_newbie_posts` 写入 `data/dashboard_data.json`（字段名 `url`）。

@@ -59,3 +59,21 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
 - **自动告警**：cookie 未设置/失效/风控、采集 0 条、pipeline 异常都会自动发飞书「瞎报错」群
   （经本机 feishu-bot relay，`scripts/notify_feishu.py`）
 - 续期只更新服务端变更的字段（`merge_cookies`），不覆盖 env 中未变化的字段
+
+## 搜索页人机验证（redcaptcha）踩坑
+
+现象：`xhs_playwright.py` 采集时搜索页返回 title「安全验证」，只发
+`redcaptcha/v2/qr/*`（二维码验证）请求，`search/notes` API 根本不发——采集 0 条，
+但 `xhs_cookie_check.py` 却显示登录态有效（首页正常）。
+
+经验（2026-08-03 实测）：
+
+1. **验证墙后不要频繁重试**：连续探测只会加重风控，应停止并等待（至少 30-60 分钟）
+   再重试。
+2. **直接 `goto` 搜索 URL 是高危信号**：真人流程是首页 → 点搜索框 → 输入 → 回车，
+   直接导航 `search_result?keyword=...` 更容易触发验证（实测仍被拦）。
+3. **指纹伪装不足以通过**：headless 下 WebGL 渲染器（SwiftShader）、CDP 特征等与
+   Windows Chrome 指纹不一致，stealth 脚本补了 webdriver/plugins/WebGL 仍被拦。
+4. **扫码验证需真人**：`qr/init` 是登录二维码，只能真人扫码或换新鲜 cookie。
+5. **恢复手段**：等待冷却 → 重试；仍不行则 Chrome + Cookie-Editor 重新导出
+   XHS_COOKIE（同「获取方式」）。
