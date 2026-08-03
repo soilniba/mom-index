@@ -47,7 +47,10 @@ def _fmt_date(s: str) -> str:
     # 晚于今天超过 1 天 → 属去年（1 月初可见去年 12 月底帖子）；
     # 晚 1 天以内视为当年（跨午夜采集时帖子显示为次日凌晨）
     if (cand - date(now.year, now.month, now.day)).days > 1:
-        cand = date(now.year - 1, mm, dd)
+        try:
+            cand = date(now.year - 1, mm, dd)
+        except ValueError:  # 去年非闰年且帖子为 02-29，无法回退 → 保持当年构造结果
+            pass
     time_part = f" {m.group(3)}:{m.group(4)}" if m.group(3) else ""
     return f"{cand.isoformat()}{time_part}"
 
