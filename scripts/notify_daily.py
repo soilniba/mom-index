@@ -85,7 +85,7 @@ def _sector_card(name: str, emoji: str, sector: dict) -> str:
         ratio_str = "— 无买卖信号"
     else:
         ratio = d.get("buy_sell_ratio", 0) or 0
-        ratio_str = f"**{ratio} : 1** {_buy_sell_label(ratio)}（买入{buy_count} / 卖出{sell_count}）"
+        ratio_str = f"**{ratio:g} : 1** {_buy_sell_label(ratio)}（买入{buy_count} / 卖出{sell_count}）"
     valid = d.get("valid_posts", d.get("total_posts", 0))
     return (
         f"**{emoji} {name} · 宝妈指数**\n\n"
