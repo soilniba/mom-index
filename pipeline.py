@@ -11,7 +11,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(__file__))
 
 from collectors.guba_collector import collect_all as collect_guba
-from collectors.xhs_collector import collect_all as collect_xhs
+from collectors.xhs_playwright import collect_all as collect_xhs
 from analyzer.llm_analyzer import analyze_all
 from analyzer.index_calculator import (
     compute_sector_index, add_record, get_dashboard_data, SECTOR_NAMES

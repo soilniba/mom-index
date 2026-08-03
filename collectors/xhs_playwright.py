@@ -112,6 +112,9 @@ async def search_keyword(page, keyword: str, limit: int = 8) -> List[Dict]:
 
 def collect_all() -> Dict[str, List[Dict]]:
     """采集所有板块 — 单个浏览器实例复用登录态，搜索间加人类延迟。"""
+    if os.environ.get("MOM_INDEX_NO_XHS"):
+        print("  ⚠️ MOM_INDEX_NO_XHS 已设置，跳过小红书")
+        return {}
     cookie = get_cookie()
     if not cookie:
         print("  ⚠️ 未配置 XHS_COOKIE，跳过小红书（见 docs/xhs-cookie.md）")

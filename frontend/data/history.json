@@ -3147,29 +3147,65 @@
     },
     {
       "date": "2026-08-03",
-      "timestamp": "2026-08-03T12:24:40.020682",
+      "timestamp": "2026-08-03T13:09:04.998779",
       "sectors": {
         "nasdaq": {
-          "index": 12.9,
+          "index": 13.9,
           "interpretation": "🔵 极度冷清 — 小白沉默不语，可能是市场底部信号",
           "details": {
-            "total_posts": 76,
-            "valid_posts": 76,
+            "total_posts": 99,
+            "valid_posts": 99,
             "spam_posts": 0,
-            "newbie_posts": 5,
+            "newbie_posts": 10,
             "pure_newbie": 0,
-            "newbie_ratio": 6.6,
-            "avg_newbie_score": 25.0,
-            "avg_sentiment": 20.0,
+            "newbie_ratio": 10.1,
+            "avg_newbie_score": 31.4,
+            "avg_sentiment": 10.0,
             "purity_signal": 0.0,
-            "activity": 95.0,
-            "mom_buy_index": 14.5,
-            "mom_sell_index": 14.5,
-            "buy_sell_ratio": 1.0,
-            "buy_count": 1,
+            "activity": 100,
+            "mom_buy_index": 19.8,
+            "mom_sell_index": 9.3,
+            "buy_sell_ratio": 3.0,
+            "buy_count": 3,
             "sell_count": 1
           },
           "top_newbie_posts": [
+            {
+              "title": "怎么买呀各位大佬",
+              "score": 46.0,
+              "level": "偏小白",
+              "reasoning": "帖子「怎么买呀各位大佬...」 命中1个小信号: 知识求助(6分)。 标题极短+情绪化，典型小白特征 综合得分46.0分， 判定为「偏小白」 (置信度: low)。",
+              "sentiment": 0.0,
+              "intent": "neutral",
+              "intent_label": "⚪ 观望",
+              "key_signals": [
+                "「知识求助」在问基础问题（怎么买/在哪看/什么意思） (命中: 大佬, 怎么买)"
+              ]
+            },
+            {
+              "title": "手把手教你场内买纳指100（新手版）",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「手把手教你场内买纳指100（新手版）...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
+              "sentiment": 0.0,
+              "intent": "neutral",
+              "intent_label": "⚪ 观望",
+              "key_signals": [
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 新手)"
+              ]
+            },
+            {
+              "title": "纳斯达克新手问答帖，第一帖图片版",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「纳斯达克新手问答帖，第一帖图片版...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
+              "sentiment": 0.0,
+              "intent": "neutral",
+              "intent_label": "⚪ 观望",
+              "key_signals": [
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 新手)"
+              ]
+            },
             {
               "title": "好了，我卖完了，你可以开始跌了",
               "score": 30.0,
@@ -3183,69 +3219,36 @@
               ]
             },
             {
-              "title": "第一次尝试网格交易，降低成本5500元（不计算佣金手续费），1.53加仓17.7",
-              "score": 29.2,
+              "title": "【纳指】现在还能买吗？",
+              "score": 30.0,
               "level": "中间派",
-              "reasoning": "帖子「第一次尝试网格交易，降低成本5500元（不计算佣金手续费），1.53加仓17.7...」 命中1个小信号: 身份自述(8分)。 命中1个专业信号: 策略思维(-4分)。 综合得分29.2分， 判定为「中间派」 (置信度: medium)。",
+              "reasoning": "帖子「【纳指】现在还能买吗？...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
               "sentiment": 0.0,
               "intent": "buy",
               "intent_label": "🟢 买入",
-              "key_signals": [
-                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 第一次)",
-                "「策略思维」讨论定投/仓位/分散/对冲/止损等策略 (命中: 网格)"
-              ]
-            },
-            {
-              "title": "明天准备跌多少个点",
-              "score": 22.0,
-              "level": "中间派",
-              "reasoning": "帖子「明天准备跌多少个点...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
-              "sentiment": 0.0,
-              "intent": "neutral",
-              "intent_label": "⚪ 观望",
-              "key_signals": []
-            },
-            {
-              "title": "卖早了，585就卖了",
-              "score": 22.0,
-              "level": "中间派",
-              "reasoning": "帖子「卖早了，585就卖了...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
-              "sentiment": 0.0,
-              "intent": "sell",
-              "intent_label": "🔴 卖出",
-              "key_signals": []
-            },
-            {
-              "title": "是不是又要跌2个点以上",
-              "score": 22.0,
-              "level": "中间派",
-              "reasoning": "帖子「是不是又要跌2个点以上...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
-              "sentiment": 0.0,
-              "intent": "neutral",
-              "intent_label": "⚪ 观望",
               "key_signals": []
             }
           ]
         },
         "gold": {
-          "index": 14.5,
+          "index": 17.2,
           "interpretation": "🔵 极度冷清 — 小白沉默不语，可能是市场底部信号",
           "details": {
-            "total_posts": 53,
-            "valid_posts": 53,
+            "total_posts": 77,
+            "valid_posts": 77,
             "spam_posts": 0,
-            "newbie_posts": 4,
+            "newbie_posts": 10,
             "pure_newbie": 1,
-            "newbie_ratio": 7.5,
-            "avg_newbie_score": 31.0,
-            "avg_sentiment": 0.0,
-            "purity_signal": 25.0,
-            "activity": 66.2,
+            "newbie_ratio": 13.0,
+            "avg_newbie_score": 34.0,
+            "avg_sentiment": 10.0,
+            "purity_signal": 10.0,
+            "activity": 96.2,
             "mom_buy_index": 0.0,
-            "mom_sell_index": 0.0,
+            "mom_sell_index": 9.3,
             "buy_sell_ratio": 0.0,
             "buy_count": 0,
-            "sell_count": 0
+            "sell_count": 1
           },
           "top_newbie_posts": [
             {
@@ -3261,56 +3264,74 @@
               ]
             },
             {
-              "title": "为啥不涨？",
-              "score": 30.0,
-              "level": "中间派",
-              "reasoning": "帖子「为啥不涨？...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
+              "title": "新手小白买黄金必看｜入门攻略，有问必答",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「新手小白买黄金必看｜入门攻略，有问必答...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
               "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
-              "key_signals": []
+              "key_signals": [
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 小白, 新手)"
+              ]
             },
             {
-              "title": "是买是卖",
-              "score": 22.0,
-              "level": "中间派",
-              "reasoning": "帖子「是买是卖...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
+              "title": "新手买黄金入门攻略，一次讲清",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「新手买黄金入门攻略，一次讲清...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
               "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
-              "key_signals": []
+              "key_signals": [
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 新手)"
+              ]
             },
             {
-              "title": "估计会跌破8元",
-              "score": 22.0,
-              "level": "中间派",
-              "reasoning": "帖子「估计会跌破8元...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
+              "title": "新手小白买黄金必看！入门攻略简单易懂！",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「新手小白买黄金必看！入门攻略简单易懂！...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
               "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
-              "key_signals": []
+              "key_signals": [
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 小白, 新手)"
+              ]
+            },
+            {
+              "title": "普通人怎么买黄金划算又省钱、少踩坑",
+              "score": 34.0,
+              "level": "中间派",
+              "reasoning": "帖子「普通人怎么买黄金划算又省钱、少踩坑...」 命中1个小信号: 知识求助(6分)。 综合得分34.0分， 判定为「中间派」 (置信度: low)。",
+              "sentiment": 0.0,
+              "intent": "neutral",
+              "intent_label": "⚪ 观望",
+              "key_signals": [
+                "「知识求助」在问基础问题（怎么买/在哪看/什么意思） (命中: 怎么买)"
+              ]
             }
           ]
         },
         "cpo": {
-          "index": 20.6,
+          "index": 22.1,
           "interpretation": "🟢 正常区间 — 小白参与度适中，无需特别操作",
           "details": {
-            "total_posts": 77,
-            "valid_posts": 77,
+            "total_posts": 93,
+            "valid_posts": 93,
             "spam_posts": 0,
-            "newbie_posts": 15,
+            "newbie_posts": 17,
             "pure_newbie": 0,
-            "newbie_ratio": 19.5,
-            "avg_newbie_score": 24.7,
-            "avg_sentiment": 33.3,
+            "newbie_ratio": 18.3,
+            "avg_newbie_score": 26.2,
+            "avg_sentiment": 41.2,
             "purity_signal": 0.0,
-            "activity": 96.2,
-            "mom_buy_index": 11.0,
-            "mom_sell_index": 7.5,
-            "buy_sell_ratio": 2.0,
+            "activity": 100,
+            "mom_buy_index": 10.2,
+            "mom_sell_index": 10.2,
+            "buy_sell_ratio": 1.0,
             "buy_count": 2,
-            "sell_count": 1
+            "sell_count": 2
           },
           "top_newbie_posts": [
             {
@@ -3323,6 +3344,31 @@
               "intent_label": "🟢 买入",
               "key_signals": [
                 "「过度乐观」非理性乐观（梭哈/稳赚/必涨/躺赚） (命中: 冲)"
+              ]
+            },
+            {
+              "title": "8月3日基金大佬操作汇总 14:50终版 cpo为主",
+              "score": 34.0,
+              "level": "中间派",
+              "reasoning": "帖子「8月3日基金大佬操作汇总 14:50终版 cpo为主...」 命中1个小信号: 知识求助(6分)。 综合得分34.0分， 判定为「中间派」 (置信度: low)。",
+              "sentiment": 0.0,
+              "intent": "neutral",
+              "intent_label": "⚪ 观望",
+              "key_signals": [
+                "「知识求助」在问基础问题（怎么买/在哪看/什么意思） (命中: 大佬)"
+              ]
+            },
+            {
+              "title": "CPO 调整，要不要止损？",
+              "score": 33.2,
+              "level": "中间派",
+              "reasoning": "帖子「CPO 调整，要不要止损？...」 命中1个小信号: 决策依赖(7分)。 命中1个专业信号: 策略思维(-4分)。 以问句结尾，在寻求答案 综合得分33.2分， 判定为「中间派」 (置信度: medium)。",
+              "sentiment": -1.0,
+              "intent": "sell",
+              "intent_label": "🔴 卖出",
+              "key_signals": [
+                "「决策依赖」请求他人替自己做投资决策（该不该/要不要/能不能） (命中: 要不要)",
+                "「策略思维」讨论定投/仓位/分散/对冲/止损等策略 (命中: 止损)"
               ]
             },
             {
@@ -3348,59 +3394,47 @@
               "key_signals": [
                 "「情绪恐慌」表达明显的恐惧/焦虑/后悔情绪 (命中: 完了)"
               ]
-            },
-            {
-              "title": "台积电2027年资本支出要冲到800亿美元，AI投资根本没降温",
-              "score": 26.0,
-              "level": "中间派",
-              "reasoning": "帖子「台积电2027年资本支出要冲到800亿美元，AI投资根本没降温...」 命中1个小信号: 过度乐观(4分)。 综合得分26.0分， 判定为「中间派」 (置信度: low)。",
-              "sentiment": 1.0,
-              "intent": "buy",
-              "intent_label": "🟢 买入",
-              "key_signals": [
-                "「过度乐观」非理性乐观（梭哈/稳赚/必涨/躺赚） (命中: 冲)"
-              ]
-            },
-            {
-              "title": "散户赶紧卖啊，卖了就涨，老美起飞了",
-              "score": 26.0,
-              "level": "中间派",
-              "reasoning": "帖子「散户赶紧卖啊，卖了就涨，老美起飞了...」 命中1个小信号: 过度乐观(4分)。 综合得分26.0分， 判定为「中间派」 (置信度: low)。",
-              "sentiment": 1.0,
-              "intent": "sell",
-              "intent_label": "🔴 卖出",
-              "key_signals": [
-                "「过度乐观」非理性乐观（梭哈/稳赚/必涨/躺赚） (命中: 起飞)"
-              ]
             }
           ]
         },
         "semiconductor": {
-          "index": 18.7,
+          "index": 19.2,
           "interpretation": "🔵 极度冷清 — 小白沉默不语，可能是市场底部信号",
           "details": {
-            "total_posts": 76,
-            "valid_posts": 76,
+            "total_posts": 92,
+            "valid_posts": 92,
             "spam_posts": 0,
-            "newbie_posts": 15,
+            "newbie_posts": 18,
             "pure_newbie": 0,
-            "newbie_ratio": 19.7,
-            "avg_newbie_score": 25.5,
-            "avg_sentiment": 22.2,
+            "newbie_ratio": 19.6,
+            "avg_newbie_score": 30.9,
+            "avg_sentiment": 18.5,
             "purity_signal": 0.0,
-            "activity": 95.0,
-            "mom_buy_index": 11.0,
+            "activity": 100,
+            "mom_buy_index": 12.8,
             "mom_sell_index": 0.0,
-            "buy_sell_ratio": 2.0,
-            "buy_count": 2,
+            "buy_sell_ratio": 3.0,
+            "buy_count": 3,
             "sell_count": 0
           },
           "top_newbie_posts": [
             {
-              "title": "兄弟们今天尾盘进的，明天能不能出来",
-              "score": 38.0,
+              "title": "芯片：美光还能不能上车？",
+              "score": 46.0,
               "level": "偏小白",
-              "reasoning": "帖子「兄弟们今天尾盘进的，明天能不能出来...」 命中1个小信号: 决策依赖(7分)。 综合得分38.0分， 判定为「偏小白」 (置信度: low)。",
+              "reasoning": "帖子「芯片：美光还能不能上车？...」 命中1个小信号: 决策依赖(7分)。 以问句结尾，在寻求答案 综合得分46.0分， 判定为「偏小白」 (置信度: low)。",
+              "sentiment": 0.0,
+              "intent": "buy",
+              "intent_label": "🟢 买入",
+              "key_signals": [
+                "「决策依赖」请求他人替自己做投资决策（该不该/要不要/能不能） (命中: 能不能)"
+              ]
+            },
+            {
+              "title": "一句话打破恐慌！半导体芯片还能不能拿住？",
+              "score": 46.0,
+              "level": "偏小白",
+              "reasoning": "帖子「一句话打破恐慌！半导体芯片还能不能拿住？...」 命中1个小信号: 决策依赖(7分)。 以问句结尾，在寻求答案 综合得分46.0分， 判定为「偏小白」 (置信度: low)。",
               "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
@@ -3409,51 +3443,39 @@
               ]
             },
             {
-              "title": "明天涨停板",
-              "score": 34.0,
-              "level": "中间派",
-              "reasoning": "帖子「明天涨停板...」 命中1个小信号: 短期思维(3分)。 标题极短+情绪化，典型小白特征 综合得分34.0分， 判定为「中间派」 (置信度: low)。",
+              "title": "看来快3个月的大佬发话了？能信吗？",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「看来快3个月的大佬发话了？能信吗？...」 命中1个小信号: 知识求助(6分)。 以问句结尾，在寻求答案 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
               "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
               "key_signals": [
-                "「短期思维」关注明天/后天/今天涨跌，非长期视角 (命中: 明天涨)"
+                "「知识求助」在问基础问题（怎么买/在哪看/什么意思） (命中: 大佬)"
               ]
             },
             {
-              "title": "周五尾盘加回来今天又翻倍加仓，周五赚的全亏完了，目前亏1%",
-              "score": 30.0,
-              "level": "中间派",
-              "reasoning": "帖子「周五尾盘加回来今天又翻倍加仓，周五赚的全亏完了，目前亏1%...」 命中1个小信号: 情绪恐慌(5分)。 综合得分30.0分， 判定为「中间派」 (置信度: low)。",
-              "sentiment": -0.33,
-              "intent": "buy",
-              "intent_label": "🟢 买入",
-              "key_signals": [
-                "「情绪恐慌」表达明显的恐惧/焦虑/后悔情绪 (命中: 完了)"
-              ]
-            },
-            {
-              "title": "全完了",
-              "score": 30.0,
-              "level": "中间派",
-              "reasoning": "帖子「全完了...」 命中1个小信号: 情绪恐慌(5分)。 综合得分30.0分， 判定为「中间派」 (置信度: low)。",
-              "sentiment": -1.0,
+              "title": "📢刚入行半导体｜先听懂10个词",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「📢刚入行半导体｜先听懂10个词...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
+              "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
               "key_signals": [
-                "「情绪恐慌」表达明显的恐惧/焦虑/后悔情绪 (命中: 完了)"
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 刚入)"
               ]
             },
             {
-              "title": "前阵子无脑冲进来的济今现在是想跑都跑不了，老登不买，小登不敢，那些济民是最可爱的",
-              "score": 26.0,
-              "level": "中间派",
-              "reasoning": "帖子「前阵子无脑冲进来的济今现在是想跑都跑不了，老登不买，小登不敢，那些济民是最可爱的...」 命中1个小信号: 过度乐观(4分)。 综合得分26.0分， 判定为「中间派」 (置信度: low)。",
-              "sentiment": 1.0,
+              "title": "半导体产业链全拆解  新手秒懂一图流",
+              "score": 42.0,
+              "level": "偏小白",
+              "reasoning": "帖子「半导体产业链全拆解  新手秒懂一图流...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
+              "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
               "key_signals": [
-                "「过度乐观」非理性乐观（梭哈/稳赚/必涨/躺赚） (命中: 冲)"
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 新手)"
               ]
             }
           ]
