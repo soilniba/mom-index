@@ -60,20 +60,21 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
   （经本机 feishu-bot relay，`scripts/notify_feishu.py`）
 - 续期只更新服务端变更的字段（`merge_cookies`），不覆盖 env 中未变化的字段
 
-## 搜索页人机验证（redcaptcha）踩坑
+## 搜索页"安全验证"拦截踩坑（实为频率限流）
 
-现象：`xhs_playwright.py` 采集时搜索页返回 title「安全验证」，只发
-`redcaptcha/v2/qr/*`（二维码验证）请求，`search/notes` API 根本不发——采集 0 条，
-但 `xhs_cookie_check.py` 却显示登录态有效（首页正常）。
+现象：`xhs_playwright.py` 采集时搜索页 title 变「安全验证」，搜索 API 不发、
+采集 0 条，但 `xhs_cookie_check.py` 却显示登录态有效（首页正常）。
+
+**实际拦截页面正文是「请求太频繁，请一分钟后再试」——是频率限流，不是
+二维码/图形验证**。页面里的 `redcaptcha/v2/qr/*` 请求是登录弹窗组件的预加载，
+与拦截无关，不要被误导。
 
 经验（2026-08-03 实测）：
 
-1. **验证墙后不要频繁重试**：连续探测只会加重风控，应停止并等待（至少 30-60 分钟）
-   再重试。
-2. **直接 `goto` 搜索 URL 是高危信号**：真人流程是首页 → 点搜索框 → 输入 → 回车，
-   直接导航 `search_result?keyword=...` 更容易触发验证（实测仍被拦）。
-3. **指纹伪装不足以通过**：headless 下 WebGL 渲染器（SwiftShader）、CDP 特征等与
-   Windows Chrome 指纹不一致，stealth 脚本补了 webdriver/plugins/WebGL 仍被拦。
-4. **扫码验证需真人**：`qr/init` 是登录二维码，只能真人扫码或换新鲜 cookie。
-5. **恢复手段**：等待冷却 → 重试；仍不行则 Chrome + Cookie-Editor 重新导出
-   XHS_COOKIE（同「获取方式」）。
+1. **拦截后不要频繁重试**：连续探测只会加重限流，应立即停止，等待至少
+   5-10 分钟再重试（页面提示 1 分钟，实测多次探测后需更久）。
+2. **直接 `goto` 搜索 URL 仍是高危信号**：真人流程是首页 → 点搜索框 → 输入 →
+   回车；直接导航 `search_result?keyword=...` 更易触发限流。
+3. **无需指纹伪装/图像识别/破解**：不是图形验证码，等冷却即恢复。
+4. **恢复手段**：停止探测 → 冷却 10 分钟+ → 重试；仍不行则 Chrome +
+   Cookie-Editor 重新导出 XHS_COOKIE（同「获取方式」）。
