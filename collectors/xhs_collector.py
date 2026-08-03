@@ -184,8 +184,8 @@ def _gen_sample_posts() -> Dict[str, List[Dict]]:
 
 
 def collect_all() -> Dict[str, List[Dict]]:
-    """采集所有板块的小红书数据。无 API Key 时不采集（不产出模拟数据，避免污染真实指数）。"""
-    if API_KEY:
+    """采集所有板块的小红书数据。无 API Key 或设置 MOM_INDEX_NO_XHS=1 时不采集（rnote 需付费，默认手动调用）。"""
+    if API_KEY and not os.environ.get("MOM_INDEX_NO_XHS"):
         result = {}
         for sector_key, keywords in SEARCH_KEYWORDS.items():
             all_notes = []

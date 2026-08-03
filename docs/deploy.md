@@ -58,16 +58,16 @@ location /mom/ {
 
 页面数据来自 `frontend/data/dashboard_data.json`（git 已提交的快照）。**每日自动刷新**：`mom-index-collect.timer` 每天 00:00 UTC（北京 08:00）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。周末也会跑（股吧无新帖，结果与周五相同，同日记录被覆盖，幂等无害）。
 
-**自动采集只含股吧**（定时任务环境无 RNODE_API_KEY，小红书跳过）。**rnote 小红书需手动调用**：
+**自动采集只含股吧**：定时任务通过 `Environment=MOM_INDEX_NO_XHS=1` 强制跳过小红书——即使 `~/.config/mom-index/env` 里有 key 也不会每天烧钱。**rnote 小红书需手动调用**：
 
 ```bash
 cd ~/projects/mom-index
-set -a && . ~/.config/mom-index/env && set +a   # 加载 RNODE_API_KEY
+set -a && . ~/.config/mom-index/env && set +a   # 加载 RNODE_API_KEY（不设 MOM_INDEX_NO_XHS）
 python pipeline.py                               # 含真实小红书
 ```
 
-> 费用：14 次搜索请求 × $0.01 ≈ $0.14/天（4+4+3+3 关键词）。充值后先在后台确认计费粒度。
-> 无 key 跑 pipeline 不会混入模拟数据（collect_all 返回空）。
+> 费用：14 次搜索请求 × $0.01 ≈ $0.14/次（4+4+3+3 关键词）。充值后先在后台确认计费粒度。
+> 跳过条件：无 RNODE_API_KEY 或设置了 MOM_INDEX_NO_XHS=1，两者都不产出模拟数据。
 
 常用命令：
 
