@@ -7,7 +7,7 @@ xhs_cookie_check.py — 小红书 Cookie 有效性验证 + 自动续期
 cookie（含 HttpOnly 的 web_session，Playwright 可读到）序列化写回 env，
 实现"刷新页面时 cookie-set 随时更新"的自动续期。
 
-退出码：0=有效（已写回）, 1=未设置, 2=无效/风控, 3=验证异常
+退出码：0=有效（写回失败仅告警，不影响结论）, 1=未设置, 2=无效/风控, 3=验证异常
 stderr：简明原因
 """
 
