@@ -33,6 +33,18 @@ cookie 的站点（如点点/七麦）。
 
 退出码：0=有效（已写回），1=未设置，2=无效/风控，3=异常
 
+## 采集
+
+`collectors/xhs_playwright.py` 用登录态免费采集（替代付费 rnote API）：
+
+```bash
+python3 collectors/xhs_playwright.py   # 10 关键词 × ~20 条 → data/xhs_posts.json
+```
+
+原理：Playwright 隐身访问搜索页，**截获前端自己的 search/notes API 响应**
+（签名由前端生成，无需实现 x-s）。采集完成后自动把服务端最新 cookie 写回 env 续期。
+单次 ~80 条（4 板块去重后），无费用。
+
 ## cookie_server 上传路由（备用通道）
 
 knowworld 的 cookie_server（`POST /update-cookie`）已支持 `xiaohongshu.com` 域名路由：
