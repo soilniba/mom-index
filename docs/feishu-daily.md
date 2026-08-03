@@ -10,7 +10,7 @@
 | # | 卡片 | 内容 |
 |---|------|------|
 | 1-4 | 各板块卡片 | 指数、解析（信号）、宝妈买入/卖出、买卖比（追涨/平衡/恐慌）、小白帖数及占比 |
-| 5 | 今日最"小白"的帖子 | 跨板块按小白分数降序前 8 条：badge、板块、买卖意图、标题、推理、信号、原帖链接 |
+| 5 | 今日最"小白"的帖子 | 跨板块按小白分数降序前 8 条：badge、板块、买卖意图、标题、发帖时间、推理、信号、原帖链接 |
 
 卡片格式模仿 `frontend/dashboard.html` 网页卡片，板块 emoji：
 📈纳斯达克 / 🥇黄金 / 🔌CPO通信 / 💾半导体。
@@ -18,10 +18,19 @@
 ## 原帖链接来源
 
 - 股吧帖子：采集器直接带 `url` 字段（`https://guba.eastmoney.com/...`）
-- 小红书帖子：由 note_id 拼接 `https://www.xiaohongshu.com/explore/{note_id}`
+- 小红书帖子：搜索 API 返回的 `xsec_token` 拼分享链接
+  `https://www.xiaohongshu.com/explore/{id}?xsec_token={token}&xsec_source=pc_search`——
+  **explore 直链会被风控拦截（"笔记暂时无法浏览"），必须带 token**
 
 链接经 `analyzer/llm_analyzer.py` 的 `_post_url()` 存入 `AnalysisResult.url`，
 随 `top_newbie_posts` 写入 `data/dashboard_data.json`（字段名 `url`）。
+
+## 发帖时间
+
+- 股吧帖子：列表页 `l5` 日期（`MM-DD HH:MM`），采集时补当年年份
+  （`YYYY-MM-DD HH:MM`，跨午夜/跨年自动纠正，见 `guba_collector._fmt_date`）
+- 小红书帖子：搜索 API 不返回发布时间，`date` 为空（前端/卡片不显示）
+- 数据链路：`AnalysisResult.date` → `top_newbie_posts.date` → 前端/卡片显示
 
 ## 发送方式
 

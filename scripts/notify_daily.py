@@ -107,6 +107,8 @@ def _post_line(i: int, p: dict) -> str:
         f"{i}. {link}[{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}] "
         f"{p.get('intent_label', '')} {p.get('title', '')}"
     ]
+    if p.get("date"):
+        lines.append(f"   🕐 {p['date']}")
     if p.get("reasoning"):
         lines.append(f"   📝 {p['reasoning']}")
     signals = p.get("key_signals") or []

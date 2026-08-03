@@ -51,8 +51,12 @@ def _parse_note_card(item: Dict) -> Dict:
     user = note.get("user") or {}
     interact = note.get("interact_info") or {}
     title = note.get("display_title") or ""
+    note_id = item.get("id") or note.get("id", "")
+    token = item.get("xsec_token") or ""
+    # 带 xsec_token 的分享链接：未登录可访问；explore 直链会被风控拦截
+    url = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={token}&xsec_source=pc_search" if note_id and token else ""
     return {
-        "id": item.get("id") or note.get("id", ""),
+        "id": note_id,
         "title": title[:100],
         "content": title,  # 搜索卡片无正文，标题兜底
         "platform": "xiaohongshu",
@@ -60,6 +64,7 @@ def _parse_note_card(item: Dict) -> Dict:
         "author_followers": 0,  # 搜索卡片不含粉丝数
         "likes": _safe_int(interact.get("liked_count")),
         "comments_count": _safe_int(interact.get("comment_count")),
+        "url": url,
         "collected_at": datetime.now().isoformat(),
         "tags": [],
     }

@@ -87,13 +87,9 @@ SELL_KEYWORDS = [
 # ============================================================
 
 def _post_url(post: Dict) -> str:
-    """帖子原始链接：股吧采集器直接带 url；小红书由 note_id 拼出。"""
-    url = post.get("url", "")
-    if url:
-        return url
-    if post.get("platform") == "xiaohongshu" and post.get("id"):
-        return f"https://www.xiaohongshu.com/explore/{post['id']}"
-    return ""
+    """帖子原始链接：采集器已存（股吧原始 url / 小红书带 xsec_token 的分享链接）。
+    explore 直链会被风控拦截，不在此拼接。"""
+    return post.get("url", "")
 
 
 @dataclass
@@ -104,6 +100,7 @@ class AnalysisResult:
     platform: str
     sector: str
     url: str = ""
+    date: str = ""  # 发帖时间（guba "YYYY-MM-DD HH:MM"；xhs 搜索接口不提供，为空）
     
     # 分数
     newbie_score: float = 0.0       # 小白总分 (0-100)
@@ -147,6 +144,7 @@ def analyze_post(post: Dict, sector: str) -> AnalysisResult:
                 platform=post.get("platform", "unknown"),
                 sector=sector,
                 url=_post_url(post),
+                date=post.get("date", ""),
                 newbie_score=0,
                 newbie_confidence="high",
                 level="垃圾帖",
@@ -160,6 +158,7 @@ def analyze_post(post: Dict, sector: str) -> AnalysisResult:
         platform=post.get("platform", "unknown"),
         sector=sector,
         url=_post_url(post),
+        date=post.get("date", ""),
     )
     
     # 1. 逐信号匹配
@@ -343,6 +342,7 @@ def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
             platform=post.get("platform", "unknown"),
             sector=sector,
             url=_post_url(post),
+            date=post.get("date", ""),
             newbie_score=0, newbie_confidence="high",
             level="垃圾帖",
             reasoning=item.get("reasoning") or "LLM 判定为垃圾/活动帖，不计入指数。",
@@ -375,6 +375,7 @@ def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
         platform=post.get("platform", "unknown"),
         sector=sector,
         url=_post_url(post),
+        date=post.get("date", ""),
         newbie_score=score,
         newbie_confidence=confidence,
         level=level,

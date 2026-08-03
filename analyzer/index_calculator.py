@@ -120,6 +120,7 @@ def compute_sector_index(analysis_results: List) -> Dict:
             {
                 "title": r.title[:60],
                 "url": r.url,
+                "date": r.date,
                 "score": r.newbie_score,
                 "level": r.level,
                 "reasoning": r.reasoning[:150],
