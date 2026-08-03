@@ -86,6 +86,16 @@ SELL_KEYWORDS = [
 # 分析引擎
 # ============================================================
 
+def _post_url(post: Dict) -> str:
+    """帖子原始链接：股吧采集器直接带 url；小红书由 note_id 拼出。"""
+    url = post.get("url", "")
+    if url:
+        return url
+    if post.get("platform") == "xiaohongshu" and post.get("id"):
+        return f"https://www.xiaohongshu.com/explore/{post['id']}"
+    return ""
+
+
 @dataclass
 class AnalysisResult:
     """单条帖子的完整分析结果"""
@@ -93,6 +103,7 @@ class AnalysisResult:
     title: str
     platform: str
     sector: str
+    url: str = ""
     
     # 分数
     newbie_score: float = 0.0       # 小白总分 (0-100)
@@ -135,6 +146,7 @@ def analyze_post(post: Dict, sector: str) -> AnalysisResult:
                 title=title[:80],
                 platform=post.get("platform", "unknown"),
                 sector=sector,
+                url=_post_url(post),
                 newbie_score=0,
                 newbie_confidence="high",
                 level="垃圾帖",
@@ -147,6 +159,7 @@ def analyze_post(post: Dict, sector: str) -> AnalysisResult:
         title=title[:80],
         platform=post.get("platform", "unknown"),
         sector=sector,
+        url=_post_url(post),
     )
     
     # 1. 逐信号匹配
@@ -329,6 +342,7 @@ def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
             title=str(post.get("title", ""))[:80],
             platform=post.get("platform", "unknown"),
             sector=sector,
+            url=_post_url(post),
             newbie_score=0, newbie_confidence="high",
             level="垃圾帖",
             reasoning=item.get("reasoning") or "LLM 判定为垃圾/活动帖，不计入指数。",
@@ -360,6 +374,7 @@ def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
         title=str(post.get("title", ""))[:80],
         platform=post.get("platform", "unknown"),
         sector=sector,
+        url=_post_url(post),
         newbie_score=score,
         newbie_confidence=confidence,
         level=level,

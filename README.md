@@ -57,7 +57,8 @@ mom-index/
 ├── pipeline.py                  # 主流程：采集→分析→指数→存储
 ├── sync_data.py                 # 数据同步脚本（data/ → frontend/data/）
 ├── scripts/
-│   └── notify_feishu.py         # 飞书告警（瞎报错群，经本机 feishu-bot relay）
+│   ├── notify_feishu.py         # 飞书告警（瞎报错群，经本机 feishu-bot relay）
+│   └── notify_daily.py          # 每日指数推送（宝妈指数群，见 docs/feishu-daily.md）
 ├── collectors/
 │   ├── anti_detection.py        # 反检测核心：UA轮换+隐身+延迟
 │   ├── guba_collector.py        # 东方财富股吧采集（✅ 生产可用）
@@ -185,7 +186,7 @@ cd frontend && python -m http.server 8765
 - [x] LLM 语义分类替换关键词规则（DeepSeek v4-flash，见 docs/llm-classifier.md）
 - [ ] 抖音/微博数据源扩展
 - [x] 定时自动采集（systemd user timer，每日北京 08:00，含股吧+小红书，见 docs/deploy.md）
-- [ ] 每日宝妈指数自动推送（微信/Telegram）
+- [x] 每日宝妈指数自动推送（飞书宝妈指数群，见 docs/feishu-daily.md）
 - [ ] 回测验证：拿历史数据验证指数与市场顶底的相关性
 
 ## 技术栈

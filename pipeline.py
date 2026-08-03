@@ -97,7 +97,17 @@ def run_pipeline():
             import shutil
             shutil.copy2(src, dst)
     print(f"  已同步到: {frontend_data_dir}")
-    
+
+    # ===== 第6步: 飞书推送 =====
+    try:
+        from scripts.notify_daily import send_daily_report
+        if send_daily_report(os.path.join(DATA_DIR, "dashboard_data.json")):
+            print("  ✅ 已推送: 飞书「宝妈指数」群")
+        else:
+            print("  ⚠️ 飞书推送失败（不影响主流程）")
+    except Exception as e:
+        print(f"  ⚠️ 飞书推送异常: {e}")
+
     # ===== 总结 =====
     print("\n" + "=" * 65)
     print("   ✅ 分析完成!")
