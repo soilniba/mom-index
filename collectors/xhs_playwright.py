@@ -11,7 +11,6 @@ import asyncio
 import json
 import os
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
@@ -38,6 +37,14 @@ SEARCH_KEYWORDS = {
 OUTPUT_FILE = Path(__file__).resolve().parent.parent / "data" / "xhs_posts.json"
 
 
+def _safe_int(v) -> int:
+    """API 返回的计数可能是字符串/None/异常值，统一安全转 int。"""
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _parse_note_card(item: Dict) -> Dict:
     """标准化 note_card → 与 xhs_collector._parse_note 兼容的格式。"""
     note = item.get("note_card") or item
@@ -51,8 +58,8 @@ def _parse_note_card(item: Dict) -> Dict:
         "platform": "xiaohongshu",
         "author": user.get("nickname") or user.get("nick_name", "未知"),
         "author_followers": 0,  # 搜索卡片不含粉丝数
-        "likes": int(interact.get("liked_count") or 0),
-        "comments_count": int(interact.get("comment_count") or 0),
+        "likes": _safe_int(interact.get("liked_count")),
+        "comments_count": _safe_int(interact.get("comment_count")),
         "collected_at": datetime.now().isoformat(),
         "tags": [],
     }
@@ -108,7 +115,6 @@ def collect_all() -> Dict[str, List[Dict]]:
         print("  ⚠️ 未配置 XHS_COOKIE，跳过小红书（见 docs/xhs-cookie.md）")
         return {}
 
-    import asyncio as _asyncio
     from playwright.async_api import async_playwright
 
     async def _run() -> Dict[str, List[Dict]]:
@@ -156,7 +162,7 @@ def collect_all() -> Dict[str, List[Dict]]:
             finally:
                 await browser.close()
 
-    return _asyncio.run(_run())
+    return asyncio.run(_run())
 
 
 if __name__ == "__main__":
