@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 import json
+import os
 
 # ============================================================
 # 信号定义库
@@ -314,10 +315,124 @@ def analyze_sector(posts: List[Dict], sector: str) -> List[AnalysisResult]:
     return results
 
 
+def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
+    """LLM 分类结果 → AnalysisResult（level/confidence 本地推导，与规则阈值一致）。"""
+    def _num(v, default=0.0, lo=0.0, hi=100.0):
+        try:
+            return max(lo, min(hi, float(v)))
+        except (TypeError, ValueError):
+            return default
+
+    if item.get("is_spam"):
+        return AnalysisResult(
+            post_id=post.get("id", ""),
+            title=str(post.get("title", ""))[:80],
+            platform=post.get("platform", "unknown"),
+            sector=sector,
+            newbie_score=0, newbie_confidence="high",
+            level="垃圾帖",
+            reasoning=item.get("reasoning") or "LLM 判定为垃圾/活动帖，不计入指数。",
+        )
+
+    score = _num(item.get("newbie_score"))
+    intent = item.get("intent")
+    if intent not in ("buy", "sell", "neutral"):
+        intent = "neutral"
+    key_signals = item.get("key_signals") or []
+    if not isinstance(key_signals, list):
+        key_signals = []
+
+    if score >= 50:
+        level = "纯小白"
+    elif score >= 35:
+        level = "偏小白"
+    elif score >= 20:
+        level = "中间派"
+    elif score >= 10:
+        level = "偏专业"
+    else:
+        level = "专业投资者"
+
+    confidence = "high" if len(key_signals) >= 3 else ("medium" if key_signals else "low")
+
+    return AnalysisResult(
+        post_id=post.get("id", ""),
+        title=str(post.get("title", ""))[:80],
+        platform=post.get("platform", "unknown"),
+        sector=sector,
+        newbie_score=score,
+        newbie_confidence=confidence,
+        level=level,
+        reasoning=item.get("reasoning") or f"判定为「{level}」（{score:.0f} 分）。",
+        sentiment_score=_num(item.get("sentiment"), lo=-1.0, hi=1.0),
+        intent=intent,
+        intent_strength=_num(item.get("intent_strength"), lo=0.0, hi=1.0),
+        key_signals=[str(s) for s in key_signals][:5],
+    )
+
+
+AB_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ab_test")
+
+
+def _log_ab_test(sector: str, rule_results: List[AnalysisResult],
+                 llm_results: List[AnalysisResult]) -> None:
+    """A/B 对比日志：记录规则与 LLM 判定分歧的帖子，用于量化 LLM 提升。"""
+    disagreements = []
+    for r, l in zip(rule_results, llm_results):
+        if r.level != l.level or abs(r.newbie_score - l.newbie_score) >= 15:
+            disagreements.append({
+                "title": r.title[:60],
+                "rule": {"level": r.level, "score": round(r.newbie_score, 1)},
+                "llm": {"level": l.level, "score": round(l.newbie_score, 1),
+                        "reasoning": l.reasoning[:80]},
+            })
+    if not disagreements:
+        return
+    try:
+        os.makedirs(AB_LOG_DIR, exist_ok=True)
+        fname = os.path.join(AB_LOG_DIR, datetime.now().strftime("%Y-%m-%d") + ".jsonl")
+        with open(fname, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "sector": sector,
+                "platform": "xiaohongshu",
+                "total": len(llm_results),
+                "disagree_count": len(disagreements),
+                "disagreements": disagreements,
+            }, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"  ⚠️ A/B 日志写入失败: {e}")
+
+
 def analyze_all(sector_data: Dict[str, List[Dict]]) -> Dict[str, List[AnalysisResult]]:
-    """分析所有板块"""
+    """分析所有板块 — 仅小红书走 LLM 语义分类（有正文、教学帖虚高严重），
+    股吧保留关键词规则（短标题情绪帖为主，LLM 无正文时幻觉风险高）。
+    LLM 失败自动回退关键词规则。"""
+    from .semantic_classifier import classify_sector
+
     all_results = {}
     for sector, posts in sector_data.items():
         print(f"  分析 {sector}: {len(posts)} 条帖子...")
-        all_results[sector] = analyze_sector(posts, sector)
+        # 按平台分流：小红书 → LLM，其他（股吧）→ 关键词规则
+        xhs_posts = [p for p in posts if p.get("platform") == "xiaohongshu"]
+        rule_posts = [p for p in posts if p.get("platform") != "xiaohongshu"]
+
+        rule_results = analyze_sector(rule_posts, sector) if rule_posts else []
+        if xhs_posts:
+            llm_items = classify_sector(xhs_posts, sector)
+            if llm_items is not None:
+                llm_results = [_result_from_llm(p, item, sector)
+                               for p, item in zip(xhs_posts, llm_items)]
+                # 规则结果并行跑一份，用于 A/B 对比（同数据双跑，开销小）
+                try:
+                    _log_ab_test(sector, analyze_sector(xhs_posts, sector), llm_results)
+                except Exception:
+                    pass
+                print(f"    [小红书 LLM 语义分类] {len(llm_results)} 条")
+            else:
+                print("    [回退关键词规则] LLM 不可用")
+                llm_results = analyze_sector(xhs_posts, sector)
+            rule_results += llm_results
+        rule_results.sort(key=lambda r: r.newbie_score, reverse=True)
+        all_results[sector] = rule_results
     return all_results

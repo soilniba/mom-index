@@ -65,7 +65,8 @@ mom-index/
 │   ├── xhs_cookie_check.py      # 小红书 Cookie 验证+自动续期（✅ 见 docs/xhs-cookie.md）
 │   └── xhs_playwright.py        # 小红书 Playwright 采集（✅ cookie 登录态 + API 截获）
 ├── analyzer/
-│   ├── llm_analyzer.py          # 多维度分类引擎（40+信号词库）
+│   ├── semantic_classifier.py   # DeepSeek 语义分类器（分批调用，失败返回 None）
+│   ├── llm_analyzer.py          # 分类引擎：LLM 语义分类 + 关键词规则回退
 │   └── index_calculator.py      # 指数计算（含买入/卖出子指数）
 ├── frontend/
 │   ├── dashboard.html           # 看板页面（Chart.js 暗色主题）
@@ -108,9 +109,15 @@ cd frontend && python -m http.server 8765
 
 ## 分析方法
 
-### 小白判定（40+信号词库）
+### LLM 语义分类（deepseek-v4-flash，仅小红书）
 
-每条帖子匹配多维度信号，每条判定带可读推理：
+小红书帖子经 DeepSeek 语义理解判定小白分数/情绪/买卖意图，核心是区分
+**作者身份**：散户「求助/倾诉」= 小白高分，博主「教学/攻略」= 内容创作低分
+（关键词无法做到这一点）。配置与回退机制见 [docs/llm-classifier.md](docs/llm-classifier.md)。
+
+### 关键词规则（股吧 + LLM 失败回退）
+
+股吧帖子（无正文，LLM 幻觉风险高）及 LLM 失败时用信号词库打分，带可读推理：
 
 ```
 帖子「黄金亏了20%了要不要割肉啊😭」
@@ -168,14 +175,14 @@ cd frontend && python -m http.server 8765
 ## 已知局限
 
 - **股吧小白占比低**：5-20% 是正常的，真正的小白信号需要小红书数据
-- **关键词规则限制**：非 LLM 语义理解，会漏掉隐含信号、误判部分 spam
+- **LLM 判定边界抖动**：~7% 帖子跨关键阈值（打卡/学习笔记/短标题等语义模糊帖），聚合层面相互抵消
 - **缺少回测**：尚未用历史行情数据验证指数与市场顶底的相关性
 - **单日快照**：一次采集只是一个数据点，需要持续运行积累
 
 ## 待解决
 
 - [x] 小红书稳定数据源（Playwright cookie 登录态 + API 截获，免费）
-- [ ] LLM 语义分类替换关键词规则
+- [x] LLM 语义分类替换关键词规则（DeepSeek v4-flash，见 docs/llm-classifier.md）
 - [ ] 抖音/微博数据源扩展
 - [x] 定时自动采集（systemd user timer，每日北京 08:00，含股吧+小红书，见 docs/deploy.md）
 - [ ] 每日宝妈指数自动推送（微信/Telegram）
@@ -183,7 +190,7 @@ cd frontend && python -m http.server 8765
 
 ## 技术栈
 
-- Python 3.14 + requests + playwright
+- Python 3.14 + requests + playwright + DeepSeek API（deepseek-v4-flash）
 - Chart.js 4.x + 原生 HTML/CSS
 - 东方财富股吧 HTML 解析
 - 小红书 Playwright（cookie 登录态 + 前端 API 截获）
