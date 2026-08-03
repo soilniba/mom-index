@@ -161,10 +161,10 @@ body {
     <div class="chart-box"><h3>💾 半导体 — 宝妈指数走势</h3><canvas id="chart-semiconductor"></canvas></div>
   </div>
 
-  <!-- Top 小白帖 -->
-  <div class="top-posts" id="top-posts">
+  <!-- Top 小白帖（标题在容器外，渲染时只替换内容区） -->
+  <div class="top-posts">
     <h3>🔥 今日最"小白"的帖子</h3>
-    <div class="loading">加载中...</div>
+    <div id="top-posts"><div class="loading">加载中...</div></div>
   </div>
 </div>
 
