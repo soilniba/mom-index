@@ -423,9 +423,14 @@ def analyze_all(sector_data: Dict[str, List[Dict]]) -> Dict[str, List[AnalysisRe
             if llm_items is not None:
                 llm_results = [_result_from_llm(p, item, sector)
                                for p, item in zip(xhs_posts, llm_items)]
-                # 规则结果并行跑一份，用于 A/B 对比（同数据双跑，开销小）
+                # 规则结果并行跑一份，用于 A/B 对比（同数据双跑，开销小）。
+                # analyze_sector 返回按分数排序，需按 post_id 重排成输入顺序，
+                # 才能与 llm_results 一一对应比较。
                 try:
-                    _log_ab_test(sector, analyze_sector(xhs_posts, sector), llm_results)
+                    rule_sorted = analyze_sector(xhs_posts, sector)
+                    rule_by_id = {r.post_id: r for r in rule_sorted}
+                    rule_ordered = [rule_by_id.get(p.get("id", "")) for p in xhs_posts]
+                    _log_ab_test(sector, rule_ordered, llm_results)
                 except Exception:
                     pass
                 print(f"    [小红书 LLM 语义分类] {len(llm_results)} 条")
