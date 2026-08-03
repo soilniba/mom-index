@@ -99,10 +99,12 @@ async def search_keyword(page, keyword: str, limit: int = 8) -> List[Dict]:
             print(f"    ⚠️ 未捕获到搜索响应: {keyword}")
         return []
 
-    items = captured[0].get("data", {}).get("items", []) or []
+    payload = captured[0] if isinstance(captured[0], dict) else {}
+    inner = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    items = inner.get("items", []) or []
     posts = []
     for item in items:
-        if item.get("model_type") == "note":
+        if isinstance(item, dict) and item.get("model_type") == "note":
             posts.append(_parse_note_card(item))
     print(f"    '{keyword}' → {len(posts)}条")
     return posts[:limit]
@@ -167,8 +169,10 @@ def collect_all() -> Dict[str, List[Dict]]:
 
 if __name__ == "__main__":
     data = collect_all()
-    if data:
+    total = sum(len(v) for v in data.values())
+    if total == 0:
+        print("\n采集 0 条，不覆盖现有数据文件")
+    else:
         os.makedirs(OUTPUT_FILE.parent, exist_ok=True)
-        OUTPUT_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-        total = sum(len(v) for v in data.values())
+        OUTPUT_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"\n共采集 {total} 条 XHS 帖子 → {OUTPUT_FILE}")
