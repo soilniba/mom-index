@@ -126,7 +126,11 @@ def send_daily_report(dashboard_path: str) -> bool:
     """读取 dashboard 数据，发送 4 张板块卡片 + 1 张最小白帖卡片。"""
     with open(dashboard_path, encoding="utf-8") as f:
         dashboard = json.load(f)
-    sectors = (dashboard.get("latest") or {}).get("sectors") or {}
+    if not isinstance(dashboard, dict):
+        print("[notify_daily] dashboard 数据格式异常", file=sys.stderr)
+        return False
+    latest = dashboard.get("latest")
+    sectors = latest.get("sectors") if isinstance(latest, dict) else {}
     if not sectors:
         print("[notify_daily] dashboard 无数据", file=sys.stderr)
         return False
