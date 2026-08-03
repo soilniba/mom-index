@@ -138,7 +138,7 @@ def send_daily_report(dashboard_path: str) -> bool:
     ok = True
     for key in ("nasdaq", "gold", "cpo", "semiconductor"):
         sector = sectors.get(key)
-        if not sector:
+        if not isinstance(sector, dict) or not sector:
             continue
         name = SECTOR_NAMES.get(key, key)
         ok = _send_markdown(
@@ -149,7 +149,11 @@ def send_daily_report(dashboard_path: str) -> bool:
     # 跨板块合并 top 小白帖，按分数降序取前 8（与网页一致）
     all_top = []
     for key, sector in sectors.items():
+        if not isinstance(sector, dict):
+            continue
         for p in sector.get("top_newbie_posts") or []:
+            if not isinstance(p, dict):
+                continue
             all_top.append({**p, "sector": SECTOR_NAMES.get(key, key)})
     all_top.sort(key=lambda x: x.get("score") or 0, reverse=True)
     top8 = all_top[:8]
