@@ -3147,89 +3147,83 @@
     },
     {
       "date": "2026-08-03",
-      "timestamp": "2026-08-03T12:16:18.043456",
+      "timestamp": "2026-08-03T12:22:10.559220",
       "sectors": {
         "nasdaq": {
-          "index": 21.4,
-          "interpretation": "🟢 正常区间 — 小白参与度适中，无需特别操作",
+          "index": 12.9,
+          "interpretation": "🔵 极度冷清 — 小白沉默不语，可能是市场底部信号",
           "details": {
-            "total_posts": 131,
-            "valid_posts": 130,
-            "spam_posts": 1,
-            "newbie_posts": 23,
-            "pure_newbie": 2,
-            "newbie_ratio": 17.7,
-            "avg_newbie_score": 34.5,
-            "avg_sentiment": 21.7,
-            "purity_signal": 8.7,
-            "activity": 100,
-            "mom_buy_index": 26.6,
-            "mom_sell_index": 8.6,
-            "buy_sell_ratio": 4.5,
-            "buy_count": 9,
-            "sell_count": 2
+            "total_posts": 76,
+            "valid_posts": 76,
+            "spam_posts": 0,
+            "newbie_posts": 5,
+            "pure_newbie": 0,
+            "newbie_ratio": 6.6,
+            "avg_newbie_score": 25.0,
+            "avg_sentiment": 20.0,
+            "purity_signal": 0.0,
+            "activity": 95.0,
+            "mom_buy_index": 14.5,
+            "mom_sell_index": 14.5,
+            "buy_sell_ratio": 1.0,
+            "buy_count": 1,
+            "sell_count": 1
           },
           "top_newbie_posts": [
             {
-              "title": "准备入#场美股的小白们一点实用建议 最近半导体，存储等板块涨势惊人，身边不少朋友想冲进去。作为一个理性的投资者，给大家几",
-              "score": 58.0,
-              "level": "纯小白",
-              "reasoning": "帖子「准备入#场美股的小白们一点实用建议 最近半导体，存储等板块涨势惊人，身边不少朋友...」 命中2个小信号: 身份自述(8分), 过度乐观(4分)。 综合得分58.0分， 判定为「纯小白」 (置信度: medium)。",
-              "sentiment": 1.0,
-              "intent": "buy",
-              "intent_label": "🟢 买入",
-              "key_signals": [
-                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 小白)",
-                "「过度乐观」非理性乐观（梭哈/稳赚/必涨/躺赚） (命中: 冲)"
-              ]
-            },
-            {
-              "title": "基金小白该如何理财才不会亏？",
-              "score": 50.0,
-              "level": "纯小白",
-              "reasoning": "帖子「基金小白该如何理财才不会亏？...」 命中1个小信号: 身份自述(8分)。 以问句结尾，在寻求答案 综合得分50.0分， 判定为「纯小白」 (置信度: low)。",
+              "title": "好了，我卖完了，你可以开始跌了",
+              "score": 30.0,
+              "level": "中间派",
+              "reasoning": "帖子「好了，我卖完了，你可以开始跌了...」 命中1个小信号: 情绪恐慌(5分)。 综合得分30.0分， 判定为「中间派」 (置信度: low)。",
               "sentiment": -1.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
               "key_signals": [
-                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 小白)"
+                "「情绪恐慌」表达明显的恐惧/焦虑/后悔情绪 (命中: 完了)"
               ]
             },
             {
-              "title": "小白刚开始投资美股，买什么赚钱， 我在上一篇讲了开始投资前的准备。如果你已经准备好了，我们作为普通散户，怎么才能在熟悉学",
-              "score": 42.0,
-              "level": "偏小白",
-              "reasoning": "帖子「小白刚开始投资美股，买什么赚钱， 我在上一篇讲了开始投资前的准备。如果你已经准备...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
-              "sentiment": 0.0,
-              "intent": "neutral",
-              "intent_label": "⚪ 观望",
-              "key_signals": [
-                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 小白)"
-              ]
-            },
-            {
-              "title": "用 Moomoo 买美股",
-              "score": 42.0,
-              "level": "偏小白",
-              "reasoning": "帖子「用 Moomoo 买美股...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
+              "title": "第一次尝试网格交易，降低成本5500元（不计算佣金手续费），1.53加仓17.7",
+              "score": 29.2,
+              "level": "中间派",
+              "reasoning": "帖子「第一次尝试网格交易，降低成本5500元（不计算佣金手续费），1.53加仓17.7...」 命中1个小信号: 身份自述(8分)。 命中1个专业信号: 策略思维(-4分)。 综合得分29.2分， 判定为「中间派」 (置信度: medium)。",
               "sentiment": 0.0,
               "intent": "buy",
               "intent_label": "🟢 买入",
               "key_signals": [
-                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 新手)"
+                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 第一次)",
+                "「策略思维」讨论定投/仓位/分散/对冲/止损等策略 (命中: 网格)"
               ]
             },
             {
-              "title": "港美股咋开",
-              "score": 42.0,
-              "level": "偏小白",
-              "reasoning": "帖子「港美股咋开...」 命中1个小信号: 身份自述(8分)。 综合得分42.0分， 判定为「偏小白」 (置信度: low)。",
+              "title": "明天准备跌多少个点",
+              "score": 22.0,
+              "level": "中间派",
+              "reasoning": "帖子「明天准备跌多少个点...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
               "sentiment": 0.0,
               "intent": "neutral",
               "intent_label": "⚪ 观望",
-              "key_signals": [
-                "「身份自述」明确自称小白/新手/刚入门/宝妈 (命中: 小白)"
-              ]
+              "key_signals": []
+            },
+            {
+              "title": "卖早了，585就卖了",
+              "score": 22.0,
+              "level": "中间派",
+              "reasoning": "帖子「卖早了，585就卖了...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
+              "sentiment": 0.0,
+              "intent": "sell",
+              "intent_label": "🔴 卖出",
+              "key_signals": []
+            },
+            {
+              "title": "是不是又要跌2个点以上",
+              "score": 22.0,
+              "level": "中间派",
+              "reasoning": "帖子「是不是又要跌2个点以上...」 未命中明确的信号词，内容较短或信息不足。 根据有限信息判定为中间派。",
+              "sentiment": 0.0,
+              "intent": "neutral",
+              "intent_label": "⚪ 观望",
+              "key_signals": []
             }
           ]
         },
