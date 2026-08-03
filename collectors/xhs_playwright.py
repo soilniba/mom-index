@@ -36,6 +36,31 @@ SEARCH_KEYWORDS = {
 
 OUTPUT_FILE = Path(__file__).resolve().parent.parent / "data" / "xhs_posts.json"
 
+# 搜索页拦截类型识别（2026-08-03 实测：正文"请求太频繁"=限流；
+# 滑块/扫码为预估类型，遇真实验证再校准关键词）
+BLOCK_PATTERNS = {
+    "rate_limit": ["请求太频繁", "请稍后再试", "请一分钟"],
+    "slider":     ["拖动滑块", "向右滑动", "请完成验证", "滑块"],
+    "scan_qr":    ["扫码登录", "请扫码", "二维码验证"],
+    "risk_limit": ["安全限制", "账号异常", "300012"],
+}
+
+
+class XhsBlocked(Exception):
+    """搜索被小红书拦截（限流/滑块/扫码/风控），带类型。"""
+
+    def __init__(self, kind: str):
+        super().__init__(kind)
+        self.kind = kind
+
+
+def _detect_block(html: str):
+    """识别拦截类型，未拦截返回 None。"""
+    for kind, kws in BLOCK_PATTERNS.items():
+        if any(k in html for k in kws):
+            return kind
+    return None
+
 
 def _safe_int(v) -> int:
     """API 返回的计数可能是字符串/None/异常值，统一安全转 int。"""
@@ -96,9 +121,11 @@ async def search_keyword(page, keyword: str, limit: int = 8) -> List[Dict]:
 
     if not captured:
         html = await page.content()
-        if "安全限制" in html or "300012" in html:
-            print(f"    ⚠️ XHS 风控拦截: {keyword}")
-        elif "登录" in html and "手机号" in html:
+        block = _detect_block(html)
+        if block:
+            print(f"    ⛔ XHS {block} 拦截: {keyword}")
+            raise XhsBlocked(block)
+        if "登录" in html and "手机号" in html:
             print(f"    ⚠️ XHS 需要登录: {keyword}")
         else:
             print(f"    ⚠️ 未捕获到搜索响应: {keyword}")
@@ -127,8 +154,9 @@ def collect_all() -> Dict[str, List[Dict]]:
 
     from playwright.async_api import async_playwright
 
-    async def _run() -> Dict[str, List[Dict]]:
+    async def _run():
         result: Dict[str, List[Dict]] = {}
+        blocked_kind = None
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
             try:
@@ -141,6 +169,7 @@ def collect_all() -> Dict[str, List[Dict]]:
                     await ctx.add_init_script(s)
                 await ctx.add_cookies(parse_cookies(cookie))
 
+                blocked_kind = None
                 for sector_key, keywords in SEARCH_KEYWORDS.items():
                     all_notes: List[Dict] = []
                     for kw in keywords:
@@ -149,8 +178,14 @@ def collect_all() -> Dict[str, List[Dict]]:
                             notes = await search_keyword(page, kw)
                             all_notes.extend(notes)
                             _ad.sleep_like_human("search")
+                        except XhsBlocked as e:
+                            # 被拦截立即停止全部搜索，不再盲等剩余关键词
+                            blocked_kind = e.kind
+                            break
                         finally:
                             await page.close()
+                    if blocked_kind:
+                        break
                     # 去重
                     seen = set()
                     unique = []
@@ -170,18 +205,24 @@ def collect_all() -> Dict[str, List[Dict]]:
                             print("  ✅ 小红书 cookie 已自动续期写回（仅更新变化字段）")
                     except Exception as e:
                         print(f"  ⚠️ cookie 续期写回失败: {e}")
-                return result
+                return result, blocked_kind
             finally:
                 await browser.close()
 
-    result = asyncio.run(_run())
+    result, blocked_kind = asyncio.run(_run())
     if sum(len(v) for v in result.values()) == 0:
         # 有 cookie 但全板块 0 条：风控/失效/页面结构变更，告警到飞书
+        hint = {
+            "rate_limit": "搜索被限流，请停止探测等待冷却（至少 10 分钟）后重试",
+            "slider": "触发滑块验证，需人工处理或实现自动拖拽后重试",
+            "scan_qr": "触发扫码验证，需真人扫码确认后重试",
+            "risk_limit": "账号安全限制，建议更换 Cookie 后重试",
+        }.get(blocked_kind, "Cookie 失效 / 页面结构变更 / 其他拦截")
         try:
             sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
             from notify_feishu import send_notice
             send_notice(
-                "**⚠️ 小红书采集失败**\n所有板块 0 条，可能原因：风控拦截 / Cookie 失效 / 页面结构变更",
+                f"**⚠️ 小红书采集失败**\n所有板块 0 条\n原因：{hint}",
                 summary="小红书采集告警",
             )
         except Exception:
