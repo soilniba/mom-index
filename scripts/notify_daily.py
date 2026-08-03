@@ -88,7 +88,8 @@ def _sector_card(name: str, emoji: str, sector: dict) -> str:
         ratio_str = f"**{ratio} : 1** {_buy_sell_label(ratio)}（买入{buy_count} / 卖出{sell_count}）"
     valid = d.get("valid_posts", d.get("total_posts", 0))
     return (
-        f"**{emoji} {name} · 宝妈指数 {index}**\n\n"
+        f"**{emoji} {name} · 宝妈指数**\n\n"
+        f"# {index}\n\n"
         f"{sector.get('interpretation', '')}\n\n"
         f"🟢 宝妈买入 **{d.get('mom_buy_index', 0) or 0}**"
         f"  |  🔴 宝妈卖出 **{d.get('mom_sell_index', 0) or 0}**\n"
@@ -98,10 +99,12 @@ def _sector_card(name: str, emoji: str, sector: dict) -> str:
 
 
 def _post_line(i: int, p: dict) -> str:
-    """单条小白帖：badge、板块、意图、标题、解析、信号、原帖链接。"""
+    """单条小白帖：🔗原帖链接、badge、板块、意图、标题、解析、信号。"""
     badge = "纯小白" if (p.get("score") or 0) >= 50 else "偏小白"
+    url = p.get("url", "")
+    link = f"[🔗]({url}) " if url else ""
     lines = [
-        f"{i}. [{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}] "
+        f"{link}{i}. [{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}] "
         f"{p.get('intent_label', '')} {p.get('title', '')}"
     ]
     if p.get("reasoning"):
@@ -109,9 +112,6 @@ def _post_line(i: int, p: dict) -> str:
     signals = p.get("key_signals") or []
     if signals:
         lines.append(f"   ▸ {' · '.join(signals)}")
-    url = p.get("url", "")
-    if url:
-        lines.append(f"   🔗 [查看原帖]({url})")
     return "\n".join(lines)
 
 
