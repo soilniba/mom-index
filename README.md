@@ -90,6 +90,8 @@ cd frontend && python -m http.server 8765
 # http://localhost:8765/dashboard.html
 ```
 
+线上看板：https://sh.gjol.vip/mom/（部署细节见 [docs/deploy.md](docs/deploy.md)）
+
 ## 数据源
 
 | 数据源 | 状态 | 日采集量 | 说明 |

@@ -1,0 +1,69 @@
+# 部署指南
+
+## 访问地址
+
+- 看板：https://sh.gjol.vip/mom/（自动跳转 dashboard.html）
+
+## 链路架构
+
+```
+浏览器 → sh.gjol.vip:443 (docker nginx)
+       → location /mom/ → proxy_pass http://172.17.0.1:8765/
+       → frps (服务器, 8765)
+       → frpc (本机 minipc, 用户级)
+       → 本机 python http.server 8765 (frontend/)
+```
+
+## 本机组件（minipc）
+
+| 组件 | 配置 | 说明 |
+|------|------|------|
+| mom-index-web.service | `~/.config/systemd/user/mom-index-web.service` | python3 http.server，`WorkingDirectory=frontend/`，端口 8765 |
+| mom-index-frpc.service | `~/.config/systemd/user/mom-index-frpc.service` | 用户级 frpc，配置 `~/.config/mom-index/frpc.toml`（从系统 frpc 模板派生，仅含 mom-index 代理） |
+| frpc 代理 | name=`mom-index-web`，local 127.0.0.1:8765 → remote 8765 | 与 cookie-server/renming 同模式 |
+
+常用命令：
+
+```bash
+systemctl --user status mom-index-web mom-index-frpc
+systemctl --user restart mom-index-web mom-index-frpc
+journalctl --user -u mom-index-web -f
+```
+
+两个服务均 enable，且用户 Linger=yes，重启后自启。
+
+## 服务器组件（sh.gjol.vip）
+
+- nginx 跑在 docker 容器 `stock-t-nginx`，配置挂载自宿主机 `/opt/stock_t_helper_v2/app/deploy/nginx/conf.d/sh.gjol.vip.conf`。
+- `/mom/` 反代条目（与 /renming/ 同模式）：
+
+```nginx
+location /mom/ {
+    proxy_pass http://172.17.0.1:8765/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header Accept-Encoding "";
+}
+```
+
+> `proxy_pass` 带尾斜杠会剥掉 `/mom/` 前缀，frontend 内的相对路径引用（`data/dashboard_data.json`）不受影响。
+
+修改配置流程：先 `cp sh.gjol.vip.conf sh.gjol.vip.conf.bak.$(date +%Y%m%d%H%M%S)`，改完 `docker exec stock-t-nginx nginx -t && docker exec stock-t-nginx nginx -s reload`。
+
+## 数据刷新
+
+页面数据来自 `frontend/data/dashboard_data.json`（git 已提交的快照）。刷新：
+
+```bash
+cd ~/projects/mom-index && python pipeline.py   # 采集+分析+写 data/
+python sync_data.py                              # 同步到 frontend/data/
+```
+
+无需重启服务（静态文件）。
+
+## 踩坑记录
+
+- **nginx 插入位置**：配置文件有 80(301) 和 443 两个 server 块、两个 `location / {`。插入新 location 必须锚定 443 块（文件末尾的 catch-all），否则会插进 80 块，https 下新路径静默落到 try_files 兜底返回默认欢迎页。本机验证用 `rfind` 锚定最后一个 `location / {`。
