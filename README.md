@@ -60,6 +60,7 @@ mom-index/
 │   ├── anti_detection.py        # 反检测核心：UA轮换+隐身+延迟
 │   ├── guba_collector.py        # 东方财富股吧采集（✅ 生产可用）
 │   ├── xhs_collector.py         # 小红书 rnote.dev API（⚠️ 需充值）
+│   ├── xhs_cookie_check.py      # 小红书 Cookie 验证+自动续期（✅ 见 docs/xhs-cookie.md）
 │   └── xhs_playwright.py        # 小红书 Playwright 方案（⚠️ 需登录态）
 ├── analyzer/
 │   ├── llm_analyzer.py          # 多维度分类引擎（40+信号词库）
@@ -99,7 +100,7 @@ cd frontend && python -m http.server 8765
 | 东方财富股吧 | ✅ 稳定 | ~300条 | 4个ETF吧，无需cookie，无风控；每日定时采集 |
 | 小红书 (rnote.dev) | ⚠️ 需充值+手动 | 0 | 14 次搜索请求 ≈ $0.14/天；手动调用，不参与定时任务 |
 | 小红书 (x-mcp) | ⚠️ 登录通/搜索风控 | 0 | 扩展已装，搜索被XHS风控 |
-| 小红书 (Playwright) | ⚠️ 需登录态 | 0 | 隐身脚本已就绪，缺登录cookie |
+| 小红书 (Playwright) | ⚠️ 登录态已就绪 | 0 | cookie 上传/续期链路已通（见 docs/xhs-cookie.md），采集代码待完善 |
 
 > 无 RNODE_API_KEY 时小红书不采集（不产出模拟数据）。手动调用方式见 docs/deploy.md。
 

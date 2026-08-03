@@ -1,5 +1,9 @@
 # 部署指南
 
+## 相关文档
+
+- 小红书 Cookie 获取/续期：[xhs-cookie.md](xhs-cookie.md)
+
 ## 访问地址
 
 - 看板：https://sh.gjol.vip/mom/（自动跳转 dashboard.html）
