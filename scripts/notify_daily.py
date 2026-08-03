@@ -104,7 +104,7 @@ def _post_line(i: int, p: dict) -> str:
     url = p.get("url", "")
     link = f"[🔗]({url}) " if url else ""
     lines = [
-        f"{link}{i}. [{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}] "
+        f"{i}. {link}[{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}] "
         f"{p.get('intent_label', '')} {p.get('title', '')}"
     ]
     if p.get("reasoning"):
