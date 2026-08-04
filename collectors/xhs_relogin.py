@@ -107,7 +107,7 @@ async def _relogin() -> int:
                 if not await _ensure_qr_ready(page, send_notice):
                     return 2
 
-                await page.screenshot(path=str(_QR_IMG))
+                await page.locator(".login-container").screenshot(path=str(_QR_IMG))
                 _crop_blank(str(_QR_IMG))
                 if not send_qr_image(str(_QR_IMG)):
                     send_notice("**⚠️ 小红书重新登录**\\n二维码发送失败", summary="小红书登录异常")
