@@ -147,10 +147,10 @@ def compute_sector_index(analysis_results: List) -> Dict:
     )), 1)
 
     # 买卖比: >1 表示买入情绪占优, <1 表示恐慌卖出占优（加权占比比）
-    if newbie_count == 0:
-        buy_sell_ratio = 0.0
+    if newbie_count == 0 or (buy_ratio <= 0 and sell_ratio <= 0):
+        buy_sell_ratio = 0.0  # 无小白，或全为观望意图 → 无买卖倾向
     elif sell_ratio <= 0:
-        buy_sell_ratio = 99.9  # 卖出为 0 → 买入绝对占优，封顶防除零
+        buy_sell_ratio = 99.9  # 卖出为 0 且买入 > 0 → 买入绝对占优，封顶防除零
     else:
         buy_sell_ratio = round(min(99.9, buy_ratio / sell_ratio), 1)
 

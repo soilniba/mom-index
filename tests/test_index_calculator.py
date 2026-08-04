@@ -119,3 +119,13 @@ def test_无小白时买卖比为零():
     posts = [make_post("guba", 5) for _ in range(10)]
     d = compute_sector_index(posts)["details"]
     assert d["buy_sell_ratio"] == 0.0
+
+
+def test_小白全观望时买卖比为零():
+    """有小白但全是 neutral 意图：无买卖倾向，不应误报买入占优。"""
+    posts = [make_post("xiaohongshu", 60, intent="neutral") for _ in range(10)]
+    posts += [make_post("guba", 60, intent="neutral") for _ in range(10)]
+    d = compute_sector_index(posts)["details"]
+    assert d["buy_count"] == 0
+    assert d["sell_count"] == 0
+    assert d["buy_sell_ratio"] == 0.0
