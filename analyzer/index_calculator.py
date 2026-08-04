@@ -129,8 +129,8 @@ def compute_sector_index(analysis_results: List) -> Dict:
                           {p for p in valid_plats if metrics[p]["buy_ratio"] > 0})
     sell_intensity = blend("sell_intensity",
                            {p for p in valid_plats if metrics[p]["sell_ratio"] > 0})
-    newbie_buy = [r for r in valid_posts if r.intent == "buy"]
-    newbie_sell = [r for r in valid_posts if r.intent == "sell"]
+    newbie_buy = [r for r in valid_posts if r.newbie_score >= 20 and r.intent == "buy"]
+    newbie_sell = [r for r in valid_posts if r.newbie_score >= 20 and r.intent == "sell"]
 
     # 买入指数: 小白买入占比(50%) + 小白热度(30%) + 买入强度(20%)
     mom_buy_index = round(min(100, (

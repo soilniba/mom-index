@@ -129,3 +129,13 @@ def test_小白全观望时买卖比为零():
     assert d["buy_count"] == 0
     assert d["sell_count"] == 0
     assert d["buy_sell_ratio"] == 0.0
+
+
+def test_非小白买卖帖不计入买卖计数():
+    """展示口径与加权指数一致：buy_count/sell_count 只统计小白帖。"""
+    posts = [make_post("guba", 60, intent="buy", strength=0.5) for _ in range(3)]
+    posts += [make_post("guba", 5, intent="buy", strength=0.5) for _ in range(7)]
+    posts += [make_post("guba", 5, intent="sell", strength=0.5) for _ in range(7)]
+    d = compute_sector_index(posts)["details"]
+    assert d["buy_count"] == 3  # 非小白(score=5)的 buy/sell 帖不计入
+    assert d["sell_count"] == 0
