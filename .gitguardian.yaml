@@ -1,0 +1,6 @@
+version: 2
+secret:
+  ignored_detectors:
+    # Generic High Entropy Secret 误报：data/*.json 含 XHS 笔记分享链接 xsec_token
+    # （公开笔记的分享 token，非凭据；真实凭据在 ~/.config/mom-index/env，git 外）
+    - Generic High Entropy Secret

@@ -30,3 +30,6 @@ desktop.ini
 
 # Chrome profiles (Playwright)
 *.pw_profile/
+
+# Added by ggshield
+.cache_ggshield
