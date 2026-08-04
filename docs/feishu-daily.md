@@ -1,6 +1,6 @@
 # 每日飞书推送（宝妈指数群）
 
-每天 08:00 定时任务（`mom-index-collect.timer` → `pipeline.py`）跑完后，
+每天 23:30 定时任务（`mom-index-collect.timer` → `pipeline.py`）跑完后，
 自动向飞书「宝妈指数」群推送当日最新指数。
 
 ## 推送内容

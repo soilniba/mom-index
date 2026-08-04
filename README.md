@@ -186,7 +186,7 @@ cd frontend && python -m http.server 8765
 - [x] 小红书稳定数据源（Playwright cookie 登录态 + API 截获，免费）
 - [x] LLM 语义分类替换关键词规则（DeepSeek v4-flash，见 docs/llm-classifier.md）
 - [ ] 抖音/微博数据源扩展
-- [x] 定时自动采集（systemd user timer，每日北京 08:00，含股吧+小红书，见 docs/deploy.md）
+- [x] 定时自动采集（systemd user timer，每日北京 23:30，含股吧+小红书，见 docs/deploy.md）
 - [x] 每日宝妈指数自动推送（飞书宝妈指数群，见 docs/feishu-daily.md）
 - [ ] 回测验证：拿历史数据验证指数与市场顶底的相关性
 
