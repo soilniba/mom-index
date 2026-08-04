@@ -14,9 +14,9 @@ build/
 *.swp
 *.swo
 
-# 数据文件（可选 — 如果要跟踪数据则删除下面几行）
-# data/*.json
-# frontend/data/*.json
+# 数据文件（运行时生成，不入 git：避免泄露 xsec_token 等触发 GitGuardian 误报）
+data/*.json
+frontend/data/*.json
 
 # 环境
 .env

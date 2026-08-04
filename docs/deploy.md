@@ -60,7 +60,7 @@ location /mom/ {
 
 ## 数据刷新
 
-页面数据来自 `frontend/data/dashboard_data.json`（git 已提交的快照）。**每日自动刷新**：`mom-index-collect.timer` 每天 15:30 UTC（北京 23:30）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。周末也会跑（股吧无新帖，结果与周五相同，同日记录被覆盖，幂等无害）。
+页面数据来自 `frontend/data/dashboard_data.json`（本地生成，gitignore 不入库）。**每日自动刷新**：`mom-index-collect.timer` 每天 15:30 UTC（北京 23:30）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。周末也会跑（股吧无新帖，结果与周五相同，同日记录被覆盖，幂等无害）。
 
 **自动采集含股吧 + 小红书（Playwright 免费采集）**：定时任务直接跑 `python pipeline.py`。
 小红书通过 `~/.config/mom-index/env` 的 XHS_COOKIE 登录态免费采集（原理见 [xhs-cookie.md](xhs-cookie.md)），
@@ -77,7 +77,7 @@ journalctl --user -u mom-index-collect -f
 ```
 
 > 注意：系统时区是 UTC。timer 的 OnCalendar 按系统本地时区（UTC）写，北京 23:30 = UTC 15:30，改时间别改错时区。
-> 每日自动采集只更新本地/线上数据文件，**不自动 git commit**——仓库数据快照保持手动提交。
+> 每日自动采集只更新本地/线上数据文件。数据文件（`data/*.json`、`frontend/data/*.json`）已加入 .gitignore 不入 git：内容含小红书分享链接 xsec_token，提交会触发 GitGuardian 高熵误报（本地 .gitguardian.yaml 的 ignored_detectors 对服务器端扫描无效）。
 
 ## 踩坑记录
 
