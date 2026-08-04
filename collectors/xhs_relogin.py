@@ -29,12 +29,6 @@ except ImportError:
 _ad = get_anti_detection()
 
 HOME_URL = "https://www.xiaohongshu.com/"
-# 登录弹窗关键词（与采集器 scan_qr 判定一致）
-QR_TEXT_KEYWORDS = ("扫码登录", "请扫码", "二维码验证", "扫码验证身份")
-# 登录按钮候选选择器（首页未自动弹窗时依次尝试）
-LOGIN_BTN_SELECTORS = (
-    ".login-btn", "[data-testid='login-button']", "span:has-text('登录')",
-)
 REFRESH_INTERVAL = 60  # 二维码 1 分钟有效，到点重载刷新并重发
 POLL_INTERVAL = 5
 
@@ -48,6 +42,38 @@ def _load_notify():
 
 def _cookies_to_header(ctx_cookies: list) -> str:
     return "; ".join(f"{c['name']}={c['value']}" for c in ctx_cookies)
+
+
+async def _ensure_qr_ready(page, send_notice) -> bool:
+    """等登录弹窗与二维码就绪：轮询 .login-container（无弹窗则点可见 .login-btn），再等 img.qrcode-img。"""
+    # 等登录弹窗出现：每 1s 检查，最多 15s
+    for _ in range(15):
+        if await page.locator(".login-container").count():
+            break
+        btn = page.locator(".login-btn:visible")
+        if await btn.count():
+            try:
+                await btn.first.click(timeout=5000)
+            except Exception:
+                pass
+        await page.wait_for_timeout(1000)
+    else:
+        send_notice(
+            "**⚠️ 小红书重新登录**\\n未检测到登录弹窗，页面结构可能变化，请手动处理",
+            summary="小红书登录异常",
+        )
+        return False
+    # 等二维码出现：每 1s 检查，最多 10s；出现后再等 1s 渲染完成
+    for _ in range(10):
+        if await page.locator("img.qrcode-img").count():
+            await page.wait_for_timeout(1000)
+            return True
+        await page.wait_for_timeout(1000)
+    send_notice(
+        "**⚠️ 小红书重新登录**\\n未检测到登录二维码，页面结构可能变化，请手动处理",
+        summary="小红书登录异常",
+    )
+    return False
 
 
 async def _relogin() -> int:
@@ -77,27 +103,10 @@ async def _relogin() -> int:
 
             deadline = _time.time() + QR_WAIT_TIMEOUT
             while _time.time() < deadline:
-                # 登录弹窗未出现则尝试点击登录按钮
-                await page.wait_for_timeout(3000)
-                html = await page.content()
-                if not any(kw in html for kw in QR_TEXT_KEYWORDS):
-                    clicked = False
-                    for sel in LOGIN_BTN_SELECTORS:
-                        if await page.locator(sel).count():
-                            try:
-                                await page.locator(sel).first.click()
-                                clicked = True
-                                break
-                            except Exception:
-                                continue
-                    if not clicked:
-                        send_notice(
-                            "**⚠️ 小红书重新登录**\\n未检测到登录二维码，页面结构可能变化，请手动处理",
-                            summary="小红书登录异常",
-                        )
-                        return 2
+                # 等登录弹窗与二维码就绪（60s 重载后弹窗需重新出现）
+                if not await _ensure_qr_ready(page, send_notice):
+                    return 2
 
-                await page.wait_for_timeout(2000)
                 await page.screenshot(path=str(_QR_IMG))
                 _crop_blank(str(_QR_IMG))
                 if not send_qr_image(str(_QR_IMG)):
