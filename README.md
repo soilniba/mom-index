@@ -64,7 +64,8 @@ mom-index/
 │   ├── guba_collector.py        # 东方财富股吧采集（✅ 生产可用）
 │   ├── xhs_collector.py         # 小红书 rnote.dev API（⚠️ 需充值）
 │   ├── xhs_cookie_check.py      # 小红书 Cookie 验证+自动续期（✅ 见 docs/xhs-cookie.md）
-│   └── xhs_playwright.py        # 小红书 Playwright 采集（✅ cookie 登录态 + API 截获）
+│   ├── xhs_playwright.py        # 小红书 Playwright 采集（✅ cookie 登录态 + API 截获）
+│   └── weibo_collector.py       # 微博 TikHub API 采集（✅ $0.001/次，见 docs/weibo.md）
 ├── analyzer/
 │   ├── semantic_classifier.py   # DeepSeek 语义分类器（分批调用，失败返回 None）
 │   ├── llm_analyzer.py          # 分类引擎：LLM 语义分类 + 关键词规则回退
@@ -103,6 +104,7 @@ cd frontend && python -m http.server 8765
 |--------|------|----------|------|
 | 东方财富股吧 | ✅ 稳定 | ~300条 | 4个ETF吧，无需cookie，无风控；每日定时采集 |
 | 小红书 (Playwright) | ✅ 免费 | ~80条/次 | cookie 登录态 + 前端 API 截获（见 docs/xhs-cookie.md）；每日定时采集；卡片角标时间→时间戳 |
+| 微博 (TikHub) | ✅ 稳定 | ~60条/日 | 高级搜索 API（$0.001/次，见 docs/weibo.md）；timescope 当天，完整正文，走 LLM 分类 |
 | 小红书 (rnote.dev) | ⚠️ 备用 | 0 | 付费 API（$0.14/次），仅手动应急用 |
 | 小红书 (x-mcp) | ⚠️ 已弃用 | 0 | 搜索被XHS风控 |
 
@@ -180,12 +182,14 @@ cd frontend && python -m http.server 8765
 - **小红书时间戳精度**：来自搜索卡片角标 publish_time（"N小时前/N天前/MM-DD/YYYY-MM-DD"），近期帖为相对时间（精度小时级），较旧帖为日期；无角标的新帖为空
 - **缺少回测**：尚未用历史行情数据验证指数与市场顶底的相关性
 - **单日快照**：一次采集只是一个数据点，需要持续运行积累
+- **微博当日量少**：板块 6-26 条/日（timescope 限定当天），样本偏小，观察期后评估是否放宽窗口
 
 ## 待解决
 
 - [x] 小红书稳定数据源（Playwright cookie 登录态 + API 截获，免费）
 - [x] LLM 语义分类替换关键词规则（DeepSeek v4-flash，见 docs/llm-classifier.md）
-- [ ] 抖音/微博数据源扩展
+- [x] 微博数据源扩展（TikHub API，见 docs/weibo.md）
+- [ ] 抖音数据源扩展
 - [x] 定时自动采集（systemd user timer，每日北京 23:30，含股吧+小红书，见 docs/deploy.md）
 - [x] 每日宝妈指数自动推送（飞书宝妈指数群，见 docs/feishu-daily.md）
 - [ ] 回测验证：拿历史数据验证指数与市场顶底的相关性

@@ -421,38 +421,41 @@ def _log_ab_test(sector: str, rule_results: List[AnalysisResult],
 
 
 def analyze_all(sector_data: Dict[str, List[Dict]]) -> Dict[str, List[AnalysisResult]]:
-    """分析所有板块 — 仅小红书走 LLM 语义分类（有正文、教学帖虚高严重），
-    股吧保留关键词规则（短标题情绪帖为主，LLM 无正文时幻觉风险高）。
+    """分析所有板块 — 小红书/微博走 LLM 语义分类（有完整正文、教学帖虚高
+    严重），股吧保留关键词规则（短标题情绪帖为主，LLM 无正文时幻觉风险高）。
     LLM 失败自动回退关键词规则。"""
     from .semantic_classifier import classify_sector
 
+    # 有完整正文的平台 → LLM；无正文（股吧标题）→ 关键词规则
+    llm_platforms = {"xiaohongshu", "weibo"}
     all_results = {}
     for sector, posts in sector_data.items():
         print(f"  分析 {sector}: {len(posts)} 条帖子...")
-        # 按平台分流：小红书 → LLM，其他（股吧）→ 关键词规则
-        xhs_posts = [p for p in posts if p.get("platform") == "xiaohongshu"]
-        rule_posts = [p for p in posts if p.get("platform") != "xiaohongshu"]
+        # 按平台分流：小红书/微博 → LLM，其他（股吧）→ 关键词规则
+        llm_posts = [p for p in posts if p.get("platform") in llm_platforms]
+        rule_posts = [p for p in posts if p.get("platform") not in llm_platforms]
 
         rule_results = analyze_sector(rule_posts, sector) if rule_posts else []
-        if xhs_posts:
-            llm_items = classify_sector(xhs_posts, sector)
+        if llm_posts:
+            llm_items = classify_sector(llm_posts, sector)
             if llm_items is not None:
                 llm_results = [_result_from_llm(p, item, sector)
-                               for p, item in zip(xhs_posts, llm_items)]
+                               for p, item in zip(llm_posts, llm_items)]
                 # 规则结果并行跑一份，用于 A/B 对比（同数据双跑，开销小）。
                 # analyze_sector 返回按分数排序，需按 post_id 重排成输入顺序，
                 # 才能与 llm_results 一一对应比较。
-                try:
-                    rule_sorted = analyze_sector(xhs_posts, sector)
-                    rule_by_id = {r.post_id: r for r in rule_sorted}
-                    rule_ordered = [rule_by_id.get(p.get("id", "")) for p in xhs_posts]
-                    _log_ab_test(sector, rule_ordered, llm_results)
-                except Exception:
-                    pass
-                print(f"    [小红书 LLM 语义分类] {len(llm_results)} 条")
+                if any(p.get("platform") == "xiaohongshu" for p in llm_posts):
+                    try:
+                        rule_sorted = analyze_sector(llm_posts, sector)
+                        rule_by_id = {r.post_id: r for r in rule_sorted}
+                        rule_ordered = [rule_by_id.get(p.get("id", "")) for p in llm_posts]
+                        _log_ab_test(sector, rule_ordered, llm_results)
+                    except Exception:
+                        pass
+                print(f"    [LLM 语义分类] {len(llm_results)} 条")
             else:
                 print("    [回退关键词规则] LLM 不可用")
-                llm_results = analyze_sector(xhs_posts, sector)
+                llm_results = analyze_sector(llm_posts, sector)
             rule_results += llm_results
         rule_results.sort(key=lambda r: r.newbie_score, reverse=True)
         all_results[sector] = rule_results

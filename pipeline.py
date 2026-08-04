@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from collectors.guba_collector import collect_all as collect_guba
 from collectors.xhs_playwright import collect_all as collect_xhs
+from collectors.weibo_collector import collect_all as collect_weibo
 from analyzer.llm_analyzer import analyze_all
 from analyzer.index_calculator import (
     compute_sector_index, add_record, get_dashboard_data, SECTOR_NAMES
@@ -46,6 +47,15 @@ def run_pipeline():
             all_posts[sector] = all_posts.get(sector, []) + posts
     except Exception as e:
         print(f"  小红书采集跳过: {e}")
+
+    # 微博 (TikHub API，有 TIKHUB_API_KEY 才采集)
+    print("  [微博]")
+    try:
+        weibo_data = collect_weibo()
+        for sector, posts in weibo_data.items():
+            all_posts[sector] = all_posts.get(sector, []) + posts
+    except Exception as e:
+        print(f"  微博采集跳过: {e}")
     
     total_collected = sum(len(v) for v in all_posts.values())
     print(f"\n  共采集 {total_collected} 条帖子\n")
