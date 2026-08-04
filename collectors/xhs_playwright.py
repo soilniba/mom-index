@@ -10,8 +10,9 @@
 import asyncio
 import json
 import os
+import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List
 from urllib.parse import quote
@@ -123,6 +124,54 @@ def _safe_int(v) -> int:
         return 0
 
 
+_REL_TIME_RE = re.compile(r'^(?:刚刚|昨天|(\d+)分钟前|(\d+)小时前|(\d+)天前)$')
+_MMDD_RE = re.compile(r'^(\d{2})-(\d{2})$')
+_FULL_DATE_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})$')
+
+
+def parse_publish_time(text, now=None) -> str:
+    """搜索卡片角标时间 → 'YYYY-MM-DD HH:MM' 绝对时间戳。
+
+    真实格式（2026-08-04 探测 v2/search/notes）：corner_tag_info 的
+    publish_time 文本为 "刚刚/N分钟前/N小时前/N天前/昨天"（近期）或
+    "MM-DD"（今年）/"YYYY-MM-DD"（往年）。MM-DD 落在未来 → 属去年
+    （与股吧 _fmt_date 边界一致）。无法解析返回空串。
+    """
+    if not text:
+        return ""
+    now = now or datetime.now()
+    m = _REL_TIME_RE.match(str(text))
+    if m:
+        if str(text) == "昨天":
+            dt = now - timedelta(days=1)
+        else:
+            minutes, hours, days = (int(x) if x else 0 for x in m.groups())
+            dt = now - timedelta(minutes=minutes, hours=hours, days=days)
+        return dt.strftime("%Y-%m-%d %H:%M")
+    m = _MMDD_RE.match(str(text))
+    if m:
+        mm, dd = int(m.group(1)), int(m.group(2))
+        try:
+            cand = datetime(now.year, mm, dd)
+        except ValueError:
+            return ""  # 非法日期（如 02-30）
+        # 晚于今天超过 1 天 → 属去年（1 月初可见去年底帖子）
+        if (cand - now).days > 1:
+            try:
+                cand = datetime(now.year - 1, mm, dd)
+            except ValueError:
+                pass  # 去年非闰年且为 02-29，保持当年构造结果
+        return cand.strftime("%Y-%m-%d %H:%M")
+    m = _FULL_DATE_RE.match(str(text))
+    if m:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            return datetime(y, mo, d).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            return ""
+    return ""
+
+
 def _parse_note_card(item: Dict) -> Dict:
     """标准化 note_card → 与 xhs_collector._parse_note 兼容的格式。"""
     note = item.get("note_card") or item
@@ -133,6 +182,12 @@ def _parse_note_card(item: Dict) -> Dict:
     token = item.get("xsec_token") or ""
     # 带 xsec_token 的分享链接：未登录可访问；explore 直链会被风控拦截
     url = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={token}&xsec_source=pc_search" if note_id and token else ""
+    # 角标时间（如 "2小时前"/"01-21"/"2025-02-06"）→ 绝对时间戳；无角标（新帖）留空
+    pub_text = ""
+    for tag in (note.get("corner_tag_info") or []):
+        if isinstance(tag, dict) and tag.get("type") == "publish_time":
+            pub_text = tag.get("text") or ""
+            break
     return {
         "id": note_id,
         "title": title[:100],
@@ -144,6 +199,8 @@ def _parse_note_card(item: Dict) -> Dict:
         "comments_count": _safe_int(interact.get("comment_count")),
         "url": url,
         "collected_at": datetime.now().isoformat(),
+        "publish_time": pub_text,
+        "published_at": parse_publish_time(pub_text),
         "tags": [],
     }
 

@@ -33,7 +33,9 @@
 
 - 股吧帖子：列表页 `l5` 日期（`MM-DD HH:MM`），采集时补当年年份
   （`YYYY-MM-DD HH:MM`，跨午夜/跨年自动纠正，见 `guba_collector._fmt_date`）
-- 小红书帖子：搜索 API 不返回发布时间，`date` 为空（前端/卡片不显示）
+- 小红书帖子：卡片角标 publish_time（"N小时前/N天前/MM-DD/YYYY-MM-DD"）经
+  `xhs_playwright.parse_publish_time` 转为 `published_at`，`date` 回退读取
+  （近期帖精度小时级，较旧帖为日期，无角标为空）
 - 数据链路：`AnalysisResult.date` → `top_newbie_posts.date` → 前端/卡片显示
 
 ## 发送方式

@@ -100,7 +100,7 @@ class AnalysisResult:
     platform: str
     sector: str
     url: str = ""
-    date: str = ""  # 发帖时间（guba "YYYY-MM-DD HH:MM"；xhs 搜索接口不提供，为空）
+    date: str = ""  # 发帖时间（guba "YYYY-MM-DD HH:MM"；xhs 来自卡片角标 publish_time 转换）
     
     # 分数
     newbie_score: float = 0.0       # 小白总分 (0-100)
@@ -144,7 +144,7 @@ def analyze_post(post: Dict, sector: str) -> AnalysisResult:
                 platform=post.get("platform", "unknown"),
                 sector=sector,
                 url=_post_url(post),
-                date=post.get("date", ""),
+                date=post.get("date") or post.get("published_at", ""),
                 newbie_score=0,
                 newbie_confidence="high",
                 level="垃圾帖",
@@ -158,7 +158,7 @@ def analyze_post(post: Dict, sector: str) -> AnalysisResult:
         platform=post.get("platform", "unknown"),
         sector=sector,
         url=_post_url(post),
-        date=post.get("date", ""),
+        date=post.get("date") or post.get("published_at", ""),
     )
     
     # 1. 逐信号匹配
@@ -342,7 +342,7 @@ def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
             platform=post.get("platform", "unknown"),
             sector=sector,
             url=_post_url(post),
-            date=post.get("date", ""),
+            date=post.get("date") or post.get("published_at", ""),
             newbie_score=0, newbie_confidence="high",
             level="垃圾帖",
             reasoning=item.get("reasoning") or "LLM 判定为垃圾/活动帖，不计入指数。",
@@ -375,7 +375,7 @@ def _result_from_llm(post: Dict, item: Dict, sector: str) -> AnalysisResult:
         platform=post.get("platform", "unknown"),
         sector=sector,
         url=_post_url(post),
-        date=post.get("date", ""),
+        date=post.get("date") or post.get("published_at", ""),
         newbie_score=score,
         newbie_confidence=confidence,
         level=level,
