@@ -66,10 +66,27 @@ QR_WAIT_TIMEOUT = 300  # 等待用户扫码上限 5 分钟
 _QR_IMG = Path("/tmp/xhs_qr_scan.png")
 
 
-def _send_qr_to_feishu(page) -> bool:
-    """截图当前扫码页并发到飞书「瞎报错」群。"""
+def _crop_blank(path: str, pad: int = 12) -> None:
+    """裁掉图片四周的纯空白（保留提示文字+二维码，边缘留少量白）。"""
     try:
-        page.screenshot(path=str(_QR_IMG))
+        from PIL import Image
+        img = Image.open(path).convert("RGB")
+        # 找非白内容区域（>240 视为空白背景置 0，其余置 255）
+        bbox = img.convert("L").point(lambda p: 0 if p > 240 else 255).getbbox()
+        if bbox:
+            l, t, r, b = bbox
+            w, h = img.size
+            img.crop((max(0, l - pad), max(0, t - pad),
+                      min(w, r + pad), min(h, b + pad))).save(path)
+    except Exception:
+        pass  # 无 Pillow 或裁切失败时保留原图
+
+
+async def _send_qr_to_feishu(page) -> bool:
+    """全页截图、裁掉四边空白后发到飞书「瞎报错」群。"""
+    try:
+        await page.screenshot(path=str(_QR_IMG))
+        _crop_blank(str(_QR_IMG))
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
         from notify_feishu import send_qr_image
         return send_qr_image(str(_QR_IMG))
@@ -83,7 +100,7 @@ async def _wait_qr_scan(page, search_url: str, captured: list) -> bool:
     import time as _time
     deadline = _time.time() + QR_WAIT_TIMEOUT
     while _time.time() < deadline:
-        if _send_qr_to_feishu(page):
+        if await _send_qr_to_feishu(page):
             print("  📱 二维码已发飞书「瞎报错」群，等待扫码...")
         # 等待扫码结果（二维码 1 分钟有效，期间轮询 captured）
         for _ in range(12):
