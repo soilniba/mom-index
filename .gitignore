@@ -33,3 +33,6 @@ desktop.ini
 
 # Added by ggshield
 .cache_ggshield
+
+# Claude Code worktrees
+.claude/worktrees/
