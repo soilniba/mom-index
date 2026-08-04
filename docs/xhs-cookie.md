@@ -78,3 +78,23 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
 3. **无需指纹伪装/图像识别/破解**：不是图形验证码，等冷却即恢复。
 4. **恢复手段**：停止探测 → 冷却 10 分钟+ → 重试；仍不行则 Chrome +
    Cookie-Editor 重新导出 XHS_COOKIE（同「获取方式」）。
+
+## 扫码重新登录（xhs_relogin）
+
+`collectors/xhs_relogin.py`：无 cookie 上下文打开小红书，登录二维码截图发飞书
+「瞎报错」群等扫码，扫码成功后把新 cookie 写回 env（仅覆盖 XHS_COOKIE 字段）。
+
+**触发方式**（飞书 bot）：在「瞎报错」群引用 bot 发的二维码/失效告警消息说
+"重发一下/过期了"，或 @bot"重新登录小红书"。
+
+**退出码**：0=扫码成功（cookie 已写回）、1=超时未扫码、2=异常。
+**超时**：二维码每 60s 刷新重发，总时限 5 分钟；成功前绝不触碰 env 旧 cookie。
+
+踩坑速查（详见 feishu-bot docs/xhs-relogin-tool.md 真机校准记录）：
+
+- 登录弹窗 `.login-container` 偶发不自动出现（风控），点击 `.login-btn:visible`
+  后等 2s 重试、上限 30s
+- 二维码元素 `img.qrcode-img`（128x128）；截图只取弹窗左半（`page.screenshot`
+  clip），`locator.screenshot` 不支持 clip
+- 通知文本换行用真 `\n`，`\\n` 会显示为字面量
+- 连续多次无头访问会触发风控，两次验证间隔建议 1 分钟以上
