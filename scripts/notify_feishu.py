@@ -62,6 +62,31 @@ def send_notice(markdown: str, summary: str = "") -> bool:
         return False
 
 
+def send_qr_image(file_path: str) -> bool:
+    """上传图片并发到瞎报错群（用于小红书扫码验证）。不抛异常。"""
+    def _post(url: str, payload: dict) -> dict:
+        body = json.dumps(payload).encode()
+        headers = {"Content-Type": "application/json"}
+        token = get_token()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = Request(url, data=body, method="POST", headers=headers)
+        with urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read())
+
+    try:
+        up = _post("http://127.0.0.1:8410/relay/upload/image", {"file_path": file_path})
+        if not up.get("ok") or not up.get("image_key"):
+            print(f"[notify_feishu] 图片上传失败: {up}", file=sys.stderr)
+            return False
+        sn = _post("http://127.0.0.1:8410/relay/send/image",
+                   {"chat_id": ERROR_CHAT_ID, "image_key": up["image_key"]})
+        return bool(sn.get("ok"))
+    except Exception as e:
+        print(f"[notify_feishu] 发送二维码失败: {e}", file=sys.stderr)
+        return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="发送告警到飞书瞎报错群")
     parser.add_argument("--text", required=True, help="markdown 告警内容")

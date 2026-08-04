@@ -41,7 +41,7 @@ OUTPUT_FILE = Path(__file__).resolve().parent.parent / "data" / "xhs_posts.json"
 BLOCK_PATTERNS = {
     "rate_limit": ["请求太频繁", "请稍后再试", "请一分钟"],
     "slider":     ["拖动滑块", "向右滑动", "请完成验证", "滑块"],
-    "scan_qr":    ["扫码登录", "请扫码", "二维码验证"],
+    "scan_qr":    ["扫码登录", "请扫码", "二维码验证", "扫码验证身份"],
     "risk_limit": ["安全限制", "账号异常", "300012"],
 }
 
@@ -60,6 +60,42 @@ def _detect_block(html: str):
         if any(k in html for k in kws):
             return kind
     return None
+
+
+QR_WAIT_TIMEOUT = 300  # 等待用户扫码上限 5 分钟
+_QR_IMG = Path("/tmp/xhs_qr_scan.png")
+
+
+def _send_qr_to_feishu(page) -> bool:
+    """截图当前扫码页并发到飞书「瞎报错」群。"""
+    try:
+        page.screenshot(path=str(_QR_IMG))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from notify_feishu import send_qr_image
+        return send_qr_image(str(_QR_IMG))
+    except Exception as e:
+        print(f"  ⚠️ 发送二维码失败: {e}")
+        return False
+
+
+async def _wait_qr_scan(page, search_url: str, captured: list) -> bool:
+    """发二维码到飞书等用户扫码，轮询直到验证通过（captured 有数据）或超时。"""
+    import time as _time
+    deadline = _time.time() + QR_WAIT_TIMEOUT
+    while _time.time() < deadline:
+        if _send_qr_to_feishu(page):
+            print("  📱 二维码已发飞书「瞎报错」群，等待扫码...")
+        # 等待扫码结果（二维码 1 分钟有效，期间轮询 captured）
+        for _ in range(12):
+            if captured:
+                return True
+            await asyncio.sleep(5)
+        # 超时未过：重新加载搜索页刷新二维码/验证状态
+        try:
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
+        except Exception:
+            pass
+    return False
 
 
 def _safe_int(v) -> int:
@@ -122,13 +158,23 @@ async def search_keyword(page, keyword: str, limit: int = 8) -> List[Dict]:
     if not captured:
         html = await page.content()
         block = _detect_block(html)
-        if block:
+        if block == "scan_qr":
+            # 扫码验证：发二维码到飞书等用户扫码，通过后继续搜索
+            print(f"    📱 XHS 扫码验证: {keyword}，等待用户扫码...")
+            if await _wait_qr_scan(page, url, captured):
+                print(f"    ✅ 扫码通过，继续搜索: {keyword}")
+            else:
+                print(f"    ⛔ XHS 扫码超时未通过: {keyword}")
+                raise XhsBlocked("scan_qr")
+        elif block:
             print(f"    ⛔ XHS {block} 拦截: {keyword}")
             raise XhsBlocked(block)
-        if "登录" in html and "手机号" in html:
+        elif "登录" in html and "手机号" in html:
             print(f"    ⚠️ XHS 需要登录: {keyword}")
         else:
             print(f"    ⚠️ 未捕获到搜索响应: {keyword}")
+
+    if not captured:
         return []
 
     payload = captured[0] if isinstance(captured[0], dict) else {}
@@ -154,19 +200,29 @@ def collect_all() -> Dict[str, List[Dict]]:
 
     from playwright.async_api import async_playwright
 
+    async def _new_context(browser):
+        """建 context：cloak 模式用源码级隐身指纹（不覆盖 UA/stealth），普通模式伪装。"""
+        kw = {"locale": "zh-CN", "timezone_id": "Asia/Shanghai",
+              "viewport": {"width": 1366, "height": 768}}
+        if os.environ.get("XHS_BROWSER") != "cloak":
+            kw["user_agent"] = _ad.get_random_ua()
+        ctx = await browser.new_context(**kw)
+        if os.environ.get("XHS_BROWSER") != "cloak":
+            for s in _ad.get_stealth_scripts():
+                await ctx.add_init_script(s)
+        return ctx
+
     async def _run():
         result: Dict[str, List[Dict]] = {}
         blocked_kind = None
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
+            if os.environ.get("XHS_BROWSER") == "cloak":
+                from cloakbrowser import launch_async
+                browser = await launch_async()
+            else:
+                browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
             try:
-                ctx = await browser.new_context(
-                    locale="zh-CN", timezone_id="Asia/Shanghai",
-                    viewport={"width": 1366, "height": 768},
-                    user_agent=_ad.get_random_ua(),
-                )
-                for s in _ad.get_stealth_scripts():
-                    await ctx.add_init_script(s)
+                ctx = await _new_context(browser)
                 await ctx.add_cookies(parse_cookies(cookie))
 
                 blocked_kind = None
