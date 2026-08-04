@@ -352,8 +352,8 @@ function renderTopPosts(data) {
     <div class="post-title">
       <span class="post-badge ${badgeClass(p.score)}">${badgeText(p.score)} ${p.score}分</span>
       <span style="color:#64748b;font-size:11px">[${escapeHtml(p.sector)}]</span>
-      ${p.date ? `<span style="color:#64748b;font-size:11px;margin-left:4px">🕐 ${escapeHtml(p.date)}</span>` : ''}
       ${p.source ? `<span style="color:#64748b;font-size:11px;margin-left:4px">[${sourceNames[p.source] || p.source}]</span>` : ''}
+      ${p.date ? `<span style="color:#64748b;font-size:11px;margin-left:4px">🕐 ${escapeHtml(p.date)}</span>` : ''}
       ${p.intent_label ? `<span style="font-size:11px;margin-left:4px">${p.intent_label}</span>` : ''}
       ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:#7dd3fc;text-decoration:none">${p.title}</a>` : p.title}
     </div>
