@@ -111,9 +111,10 @@ async def _relogin() -> int:
                 box = await page.locator(".login-container").bounding_box()
                 if not box:
                     return 2
-                await page.locator(".login-container").screenshot(
+                await page.screenshot(
                     path=str(_QR_IMG),
-                    clip={"x": 0, "y": 0, "width": box["width"] / 2, "height": box["height"]},
+                    clip={"x": box["x"], "y": box["y"],
+                          "width": box["width"] / 2, "height": box["height"]},
                 )
                 _crop_blank(str(_QR_IMG))
                 if not send_qr_image(str(_QR_IMG)):
