@@ -46,7 +46,7 @@ def _cookies_to_header(ctx_cookies: list) -> str:
 
 async def _ensure_qr_ready(page, send_notice) -> bool:
     """等登录弹窗与二维码就绪：轮询 .login-container（无弹窗则点可见 .login-btn），再等 img.qrcode-img。"""
-    # 等登录弹窗出现：每 1s 检查，最多 15s
+    # 等登录弹窗出现：每 2s 检查，最多 30s；点击登录入口后弹窗可能延迟渲染（偶发风控不自动弹出）
     for _ in range(15):
         if await page.locator(".login-container").count():
             break
@@ -56,7 +56,7 @@ async def _ensure_qr_ready(page, send_notice) -> bool:
                 await btn.first.click(timeout=5000)
             except Exception:
                 pass
-        await page.wait_for_timeout(1000)
+        await page.wait_for_timeout(2000)
     else:
         send_notice(
             "**⚠️ 小红书重新登录**\n未检测到登录弹窗，页面结构可能变化，请手动处理",
