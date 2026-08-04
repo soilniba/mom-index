@@ -28,6 +28,7 @@ TOKEN_VAR = "FEISHU_BOT_TOKEN"
 
 SECTOR_EMOJI = {"nasdaq": "📈", "gold": "🥇", "cpo": "🔌", "semiconductor": "💾"}
 SECTOR_NAMES = {"nasdaq": "纳斯达克", "gold": "黄金", "cpo": "CPO通信", "semiconductor": "半导体"}
+SOURCE_NAMES = {"xiaohongshu": "小红书", "weibo": "微博", "guba": "股吧"}
 
 
 def get_token() -> str:
@@ -103,8 +104,10 @@ def _post_line(i: int, p: dict) -> str:
     badge = "纯小白" if (p.get("score") or 0) >= 50 else "偏小白"
     url = p.get("url", "")
     link = f"[🔗]({url}) " if url else ""
+    src = p.get("source")
+    src_tag = f"[{SOURCE_NAMES.get(src, src)}]" if src else ""
     lines = [
-        f"{i}. {link}[{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}] "
+        f"{i}. {link}[{badge} {p.get('score') or 0:.0f}分] [{p.get('sector', '')}]{src_tag} "
         f"{p.get('intent_label', '')} {p.get('title', '')}"
     ]
     if p.get("date"):
