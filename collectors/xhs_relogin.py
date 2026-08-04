@@ -59,7 +59,7 @@ async def _ensure_qr_ready(page, send_notice) -> bool:
         await page.wait_for_timeout(1000)
     else:
         send_notice(
-            "**⚠️ 小红书重新登录**\\n未检测到登录弹窗，页面结构可能变化，请手动处理",
+            "**⚠️ 小红书重新登录**\n未检测到登录弹窗，页面结构可能变化，请手动处理",
             summary="小红书登录异常",
         )
         return False
@@ -70,7 +70,7 @@ async def _ensure_qr_ready(page, send_notice) -> bool:
             return True
         await page.wait_for_timeout(1000)
     send_notice(
-        "**⚠️ 小红书重新登录**\\n未检测到登录二维码，页面结构可能变化，请手动处理",
+        "**⚠️ 小红书重新登录**\n未检测到登录二维码，页面结构可能变化，请手动处理",
         summary="小红书登录异常",
     )
     return False
@@ -83,7 +83,7 @@ async def _relogin() -> int:
 
     send_notice, send_qr_image = _load_notify()
     send_notice(
-        "**📱 小红书重新登录**\\n已开始登录流程，二维码将发送到本群，请用手机扫码（5 分钟内有效，过期可再喊我重发）",
+        "**📱 小红书重新登录**\n已开始登录流程，二维码将发送到本群，请用手机扫码（5 分钟内有效，过期可再喊我重发）",
         summary="小红书重新登录",
     )
 
@@ -107,10 +107,17 @@ async def _relogin() -> int:
                 if not await _ensure_qr_ready(page, send_notice):
                     return 2
 
-                await page.locator(".login-container").screenshot(path=str(_QR_IMG))
+                # 只截弹窗左侧二维码区域，去掉手机号登录区
+                box = await page.locator(".login-container").bounding_box()
+                if not box:
+                    return 2
+                await page.locator(".login-container").screenshot(
+                    path=str(_QR_IMG),
+                    clip={"x": 0, "y": 0, "width": box["width"] / 2, "height": box["height"]},
+                )
                 _crop_blank(str(_QR_IMG))
                 if not send_qr_image(str(_QR_IMG)):
-                    send_notice("**⚠️ 小红书重新登录**\\n二维码发送失败", summary="小红书登录异常")
+                    send_notice("**⚠️ 小红书重新登录**\n二维码发送失败", summary="小红书登录异常")
 
                 # 轮询登录态（localStorage 登录令牌 / 侧边栏「我」入口）
                 for _ in range(REFRESH_INTERVAL // POLL_INTERVAL):
@@ -131,7 +138,7 @@ async def _relogin() -> int:
 
             if not logged_in:
                 send_notice(
-                    "**⏳ 小红书重新登录超时**\\n未在 5 分钟内完成扫码，可再喊 bot 重发",
+                    "**⏳ 小红书重新登录超时**\n未在 5 分钟内完成扫码，可再喊 bot 重发",
                     summary="小红书登录超时",
                 )
                 return 1
@@ -141,18 +148,18 @@ async def _relogin() -> int:
                 await ctx.cookies("https://www.xiaohongshu.com/"))
             if "web_session=" not in header:
                 send_notice(
-                    "**⚠️ 小红书重新登录**\\n扫码后未获取到登录 cookie，请重试",
+                    "**⚠️ 小红书重新登录**\n扫码后未获取到登录 cookie，请重试",
                     summary="小红书登录异常",
                 )
                 return 2
             if update_env_cookie(header):
                 send_notice(
-                    "**✅ 小红书登录成功**\\n登录态已更新，采集将自动使用新 cookie",
+                    "**✅ 小红书登录成功**\n登录态已更新，采集将自动使用新 cookie",
                     summary="小红书登录成功",
                 )
                 return 0
             send_notice(
-                "**⚠️ 小红书重新登录**\\n扫码成功但 cookie 写回 env 失败，请手动更新",
+                "**⚠️ 小红书重新登录**\n扫码成功但 cookie 写回 env 失败，请手动更新",
                 summary="小红书登录异常",
             )
             return 2
@@ -167,7 +174,7 @@ def main() -> int:
         print(f"[xhs_relogin] 异常: {e}", file=sys.stderr)
         try:
             send_notice, _ = _load_notify()
-            send_notice(f"**❌ 小红书重新登录异常**\\n{e}", summary="小红书登录异常")
+            send_notice(f"**❌ 小红书重新登录异常**\n{e}", summary="小红书登录异常")
         except Exception:
             pass
         return 2
