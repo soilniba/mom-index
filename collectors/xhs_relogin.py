@@ -17,13 +17,13 @@ from pathlib import Path
 
 try:
     from .xhs_cookie_check import update_env_cookie
-    from .xhs_playwright import QR_WAIT_TIMEOUT, _QR_IMG, _crop_blank
+    from .xhs_playwright import QR_WAIT_TIMEOUT, _send_qr_to_feishu
     from .anti_detection import get_anti_detection
 except ImportError:
     # 独立执行（python3 collectors/xhs_relogin.py）时无包上下文
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from xhs_cookie_check import update_env_cookie
-    from xhs_playwright import QR_WAIT_TIMEOUT, _QR_IMG, _crop_blank
+    from xhs_playwright import QR_WAIT_TIMEOUT, _send_qr_to_feishu
     from anti_detection import get_anti_detection
 
 _ad = get_anti_detection()
@@ -36,8 +36,8 @@ POLL_INTERVAL = 5
 def _load_notify():
     """延迟导入 notify_feishu（独立执行时需把 scripts 目录加进 path）。"""
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    from notify_feishu import send_notice, send_qr_image
-    return send_notice, send_qr_image
+    from notify_feishu import send_notice
+    return send_notice
 
 
 def _cookies_to_header(ctx_cookies: list) -> str:
@@ -81,7 +81,7 @@ async def _relogin() -> int:
 
     from playwright.async_api import async_playwright
 
-    send_notice, send_qr_image = _load_notify()
+    send_notice = _load_notify()
     send_notice(
         "**📱 小红书重新登录**\n已开始登录流程，二维码将发送到本群，请用手机扫码（5 分钟内有效，过期可再喊我重发）",
         summary="小红书重新登录",
@@ -89,15 +89,21 @@ async def _relogin() -> int:
 
     logged_in = False
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
+        if os.environ.get("XHS_BROWSER") == "plain":
+            browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
+        else:
+            # 默认 cloak：源码级隐身指纹，统一走 cloakbrowser
+            from cloakbrowser import launch_async
+            browser = await launch_async()
         try:
-            ctx = await browser.new_context(
-                locale="zh-CN", timezone_id="Asia/Shanghai",
-                viewport={"width": 1366, "height": 768},
-                user_agent=_ad.get_random_ua(),
-            )
-            for s in _ad.get_stealth_scripts():
-                await ctx.add_init_script(s)
+            kw = {"locale": "zh-CN", "timezone_id": "Asia/Shanghai",
+                  "viewport": {"width": 1366, "height": 768}}
+            if os.environ.get("XHS_BROWSER") == "plain":
+                kw["user_agent"] = _ad.get_random_ua()
+            ctx = await browser.new_context(**kw)
+            if os.environ.get("XHS_BROWSER") == "plain":
+                for s in _ad.get_stealth_scripts():
+                    await ctx.add_init_script(s)
             page = await ctx.new_page()
             await page.goto(HOME_URL, wait_until="domcontentloaded", timeout=30000)
 
@@ -107,17 +113,13 @@ async def _relogin() -> int:
                 if not await _ensure_qr_ready(page, send_notice):
                     return 2
 
-                # 只截弹窗左侧二维码区域，去掉手机号登录区
+                # 只截弹窗左侧二维码区域，去掉手机号登录区（复用 xhs_playwright 发送逻辑）
                 box = await page.locator(".login-container").bounding_box()
                 if not box:
                     return 2
-                await page.screenshot(
-                    path=str(_QR_IMG),
-                    clip={"x": box["x"], "y": box["y"],
-                          "width": box["width"] / 2, "height": box["height"]},
-                )
-                _crop_blank(str(_QR_IMG))
-                if not send_qr_image(str(_QR_IMG)):
+                if not await _send_qr_to_feishu(page, clip={
+                        "x": box["x"], "y": box["y"],
+                        "width": box["width"] / 2, "height": box["height"]}):
                     send_notice("**⚠️ 小红书重新登录**\n二维码发送失败", summary="小红书登录异常")
 
                 # 轮询登录态（localStorage 登录令牌 / 侧边栏「我」入口）
@@ -174,7 +176,7 @@ def main() -> int:
     except Exception as e:
         print(f"[xhs_relogin] 异常: {e}", file=sys.stderr)
         try:
-            send_notice, _ = _load_notify()
+            send_notice = _load_notify()
             send_notice(f"**❌ 小红书重新登录异常**\n{e}", summary="小红书登录异常")
         except Exception:
             pass

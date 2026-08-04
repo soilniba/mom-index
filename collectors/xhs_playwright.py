@@ -83,10 +83,13 @@ def _crop_blank(path: str, pad: int = 12) -> None:
         pass  # 无 Pillow 或裁切失败时保留原图
 
 
-async def _send_qr_to_feishu(page) -> bool:
-    """全页截图、裁掉四边空白后发到飞书「瞎报错」群。"""
+async def _send_qr_to_feishu(page, clip=None) -> bool:
+    """截图（默认全页，传 clip 只截指定区域）、裁掉四边空白后发到飞书「瞎报错」群。"""
     try:
-        await page.screenshot(path=str(_QR_IMG))
+        if clip:
+            await page.screenshot(path=str(_QR_IMG), clip=clip)
+        else:
+            await page.screenshot(path=str(_QR_IMG))
         _crop_blank(str(_QR_IMG))
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
         from notify_feishu import send_qr_image
@@ -278,10 +281,10 @@ def collect_all() -> Dict[str, List[Dict]]:
         """建 context：cloak 模式用源码级隐身指纹（不覆盖 UA/stealth），普通模式伪装。"""
         kw = {"locale": "zh-CN", "timezone_id": "Asia/Shanghai",
               "viewport": {"width": 1366, "height": 768}}
-        if os.environ.get("XHS_BROWSER") != "cloak":
+        if os.environ.get("XHS_BROWSER") == "plain":
             kw["user_agent"] = _ad.get_random_ua()
         ctx = await browser.new_context(**kw)
-        if os.environ.get("XHS_BROWSER") != "cloak":
+        if os.environ.get("XHS_BROWSER") == "plain":
             for s in _ad.get_stealth_scripts():
                 await ctx.add_init_script(s)
         return ctx
@@ -290,11 +293,12 @@ def collect_all() -> Dict[str, List[Dict]]:
         result: Dict[str, List[Dict]] = {}
         blocked_kind = None
         async with async_playwright() as p:
-            if os.environ.get("XHS_BROWSER") == "cloak":
+            if os.environ.get("XHS_BROWSER") == "plain":
+                browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
+            else:
+                # 默认 cloak：源码级隐身指纹，统一走 cloakbrowser
                 from cloakbrowser import launch_async
                 browser = await launch_async()
-            else:
-                browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
             try:
                 ctx = await _new_context(browser)
                 await ctx.add_cookies(parse_cookies(cookie))

@@ -98,3 +98,21 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
   clip），`locator.screenshot` 不支持 clip
 - 通知文本换行用真 `\n`，`\\n` 会显示为字面量
 - 连续多次无头访问会触发风控，两次验证间隔建议 1 分钟以上
+
+## 运行环境（2026-08-04 统一）
+
+playwright 环境此前碎片化（系统 3.14 裸、3.12 装 playwright 1.58、/tmp 实验
+venv 装 1.62），互相不兼容且 /tmp 重启即丢。现已统一：
+
+- **唯一 Python 环境**：`~/venvs/py314`（Python 3.14 venv，持久）
+- **playwright 1.62 + cloakbrowser 0.5.3**，浏览器缓存 `~/.cache/ms-playwright`
+  仅保留 chromium-1234（旧 1208 已删）
+- **xhs 三件套默认 cloakbrowser**（源码级隐身指纹）：`xhs_playwright.py` /
+  `xhs_cookie_check.py` / `xhs_relogin.py`。需要旧式伪装（UA + stealth scripts）
+  时设环境变量 `XHS_BROWSER=plain`
+- **服务已切换**：mom-index-collect、feishu-bot、knowworld cookie-server 的
+  ExecStart 均指向 `~/venvs/py314/bin/python`；3.12 的 playwright/cloakbrowser
+  已卸载，`/tmp/cloak_venv` 已删除
+- 新装/重装环境：`python3 -m venv ~/venvs/py314 && ~/venvs/py314/bin/pip install
+  playwright cloakbrowser pillow requests && ~/venvs/py314/bin/python -m
+  playwright install chromium`

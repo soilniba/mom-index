@@ -125,15 +125,21 @@ async def verify(cookie: str) -> tuple[bool, str, str | None]:
 
     _ad = get_anti_detection()
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
+        if os.environ.get("XHS_BROWSER") == "plain":
+            browser = await p.chromium.launch(headless=True, args=_ad.get_playwright_launch_args())
+        else:
+            # 默认 cloak：源码级隐身指纹，统一走 cloakbrowser
+            from cloakbrowser import launch_async
+            browser = await launch_async()
         try:
-            ctx = await browser.new_context(
-                locale="zh-CN", timezone_id="Asia/Shanghai",
-                viewport={"width": 1366, "height": 768},
-                user_agent=_ad.get_random_ua(),
-            )
-            for s in _ad.get_stealth_scripts():
-                await ctx.add_init_script(s)
+            kw = {"locale": "zh-CN", "timezone_id": "Asia/Shanghai",
+                  "viewport": {"width": 1366, "height": 768}}
+            if os.environ.get("XHS_BROWSER") == "plain":
+                kw["user_agent"] = _ad.get_random_ua()
+            ctx = await browser.new_context(**kw)
+            if os.environ.get("XHS_BROWSER") == "plain":
+                for s in _ad.get_stealth_scripts():
+                    await ctx.add_init_script(s)
             await ctx.add_cookies(parse_cookies(cookie))
 
             page = await ctx.new_page()
