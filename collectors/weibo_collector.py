@@ -142,6 +142,14 @@ def search_keyword(keyword: str, api_key: str) -> List[Dict]:
     return [_parse_weibo(r) for r in results if isinstance(r, dict)]
 
 
+def _safe_int(v) -> int:
+    """外部 API 计数可能是字符串/None/异常值，统一安全转 int。"""
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _parse_weibo(r: Dict) -> Dict:
     """高级搜索结果 → 与 xhs 采集器兼容的 post dict。"""
     interaction = r.get("interaction") or {}
@@ -156,8 +164,8 @@ def _parse_weibo(r: Dict) -> Dict:
         "platform": "weibo",
         "author": r.get("user_name") or r.get("user_nick", "未知"),
         "author_followers": 0,  # 高级搜索不返回粉丝数
-        "likes": int(interaction.get("like_count") or 0),
-        "comments_count": int(interaction.get("comment_count") or 0),
+        "likes": _safe_int(interaction.get("like_count")),
+        "comments_count": _safe_int(interaction.get("comment_count")),
         "url": url,
         "collected_at": datetime.now().isoformat(),
         "publish_time": pub_text,
