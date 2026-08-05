@@ -16,7 +16,6 @@ xhs_sms_login.py — 小红书短信验证码自动登录（替代手动扫码�
 import asyncio
 import os
 import sys
-import time as _time
 from pathlib import Path
 
 try:
