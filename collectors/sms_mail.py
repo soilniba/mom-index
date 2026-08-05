@@ -8,6 +8,7 @@ sms_mail.py — 短信转发邮箱收件模块（POP3）
 配置（环境变量，与 xhs_sms_login 共用）：
 - GET_SMS_MAIL：邮箱账号（如 sms-forward@126.com）
 - GET_SMS_MAIL_KEY：邮箱授权码
+- GET_SMS_POP_HOST：POP3 服务器地址（如 pop.126.com；换邮箱服务商时修改）
 
 为什么 POP3 而不是 IMAP：网易对 IMAP 有 "Unsafe Login" 安全拦截
 （2026-08-05 实测，连续多次均被拒），POP3 稳定可用且不分文件夹，
@@ -24,8 +25,8 @@ import poplib
 import re
 import time
 
-MAIL_HOST = "pop.126.com"
-MAIL_PORT = 995
+MAIL_HOST = os.environ["GET_SMS_POP_HOST"]
+MAIL_PORT = 995  # POP3-over-SSL 标准端口，各主流邮箱通用
 LOOKBACK = 30  # 首轮回溯扫描的邮件数
 FRESH_WINDOW = 200  # 只认该秒数内到达的邮件（验证码 3 分钟有效）
 

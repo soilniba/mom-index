@@ -29,7 +29,7 @@ except ImportError:
     from xhs_cookie_check import update_env_cookie
 
 HOME_URL = "https://www.xiaohongshu.com/"
-REQUIRED_ENV = ("GET_SMS_PHONE", "GET_SMS_MAIL", "GET_SMS_MAIL_KEY")
+REQUIRED_ENV = ("GET_SMS_PHONE", "GET_SMS_MAIL", "GET_SMS_MAIL_KEY", "GET_SMS_POP_HOST")
 PHONE = os.environ.get("GET_SMS_PHONE", "")
 CODE_TIMEOUT = 175  # 与按钮倒计时一致：验证码 3 分钟有效，175s 后可重发
 MASKED_PHONE = PHONE[:3] + "***" + PHONE[-4:]

@@ -112,6 +112,7 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
 - `GET_SMS_PHONE`：小红书登录手机号（如 180\*\*\*2246）
 - `GET_SMS_MAIL`：短信转发邮箱账号（如 sms-forward@126.com）
 - `GET_SMS_MAIL_KEY`：邮箱授权码
+- `GET_SMS_POP_HOST`：POP3 服务器地址（如 pop.126.com；换邮箱服务商时修改）
 
 **为什么 POP3 不是 IMAP**：网易对 IMAP 有 "Unsafe Login" 安全拦截（本机
 连续多次实测均被拒），POP3 稳定可用，且不分文件夹（垃圾箱里的转发邮件也能
