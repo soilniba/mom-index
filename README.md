@@ -68,6 +68,7 @@ mom-index/
 │   ├── xhs_relogin.py           # 小红书扫码重新登录（✅ 见 docs/xhs-cookie.md）
 │   ├── xhs_sms_login.py         # 小红书短信验证码自动登录（✅ 见 docs/xhs-cookie.md）
 │   ├── sms_mail.py              # 短信转发邮箱收件模块（POP3，验证码提取）
+│   ├── captcha_solver.py        # 打码平台封装（超级鹰：滑块/点选坐标，见 docs/xhs-cookie.md）
 │   └── weibo_collector.py       # 微博 TikHub API 采集（✅ $0.001/次，见 docs/weibo.md）
 ├── analyzer/
 │   ├── semantic_classifier.py   # DeepSeek 语义分类器（分批调用，失败返回 None）

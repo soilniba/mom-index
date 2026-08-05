@@ -16,23 +16,28 @@ GET_SMS_MAIL_KEY（邮箱授权码）。
 
 import asyncio
 import os
+import random
 import sys
 from pathlib import Path
 
 try:
     from .sms_mail import wait_for_code
     from .xhs_cookie_check import update_env_cookie
+    from . import captcha_solver
 except ImportError:
     # 独立执行（python3 collectors/xhs_sms_login.py）时无包上下文
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from sms_mail import wait_for_code
     from xhs_cookie_check import update_env_cookie
+    import captcha_solver
 
 HOME_URL = "https://www.xiaohongshu.com/"
 REQUIRED_ENV = ("GET_SMS_PHONE", "GET_SMS_MAIL", "GET_SMS_MAIL_KEY", "GET_SMS_POP_HOST")
 PHONE = os.environ.get("GET_SMS_PHONE", "")
 CODE_TIMEOUT = 175  # 与按钮倒计时一致：验证码 3 分钟有效，175s 后可重发
 MASKED_PHONE = PHONE[:3] + "***" + PHONE[-4:]
+SLIDER_HINTS = ("向右滑动", "拖动滑块", "滑块填充")  # 滑块弹窗文本特征
+MAX_SLIDER_TRIES = 2
 
 
 def _load_notify():
@@ -61,12 +66,105 @@ async def _ensure_dialog(page) -> bool:
     return False
 
 
-async def _send_code(page) -> bool:
+def _track(distance: float) -> list[float]:
+    """先快后慢 + 轻微抖动的人类拖动轨迹（dx 序列）。"""
+    pos, mid = 0.0, distance * random.uniform(0.6, 0.75)
+    track = []
+    while pos < distance:
+        step = random.uniform(6, 14) if pos < mid else random.uniform(1, 4)
+        pos = min(pos + step, distance)
+        track.append(round(pos, 1))
+    return track
+
+
+def _slider_locator(page):
+    """按文本特征找滑块弹窗提示元素，无弹窗返回 None。"""
+    for hint in SLIDER_HINTS:
+        loc = page.get_by_text(hint, exact=False)
+        try:
+            if loc.count() and loc.first.is_visible():
+                return loc
+        except Exception:
+            continue
+    return None
+
+
+async def _solve_slider(page, hint, send_notice) -> bool:
+    """打码平台识别缺口 → 模拟人类轨迹拖动，弹窗消失返回 True。
+
+    小红书滑块是自研盾（burdock），轨迹行为检测可能识破 —— 拖动后弹窗
+    未消失视为失败并返分，宁可报错让用户手动过，不盲试。
+    """
+    container = hint.locator("..")
+    try:
+        shot = await container.screenshot(timeout=5000)
+    except Exception:
+        send_notice("**⚠️ 小红书短信登录**\n滑块弹窗截图失败，请手动完成验证",
+                    summary="小红书登录异常")
+        return False
+    try:
+        gap, pic_id = await asyncio.to_thread(captcha_solver.slider_gap, shot)
+    except captcha_solver.ConfigError:
+        send_notice("**⚠️ 小红书短信登录**\n遇到滑块验证但未配置打码平台"
+                    "（CAPTCHA_USER/CAPTCHA_PASS），请手动完成验证",
+                    summary="小红书登录异常")
+        return False
+    except Exception as e:
+        send_notice(f"**⚠️ 小红书短信登录**\n打码平台识别失败: {e}",
+                    summary="小红书登录异常")
+        return False
+    if gap < 10:  # 坐标解析异常兜底，返分
+        await asyncio.to_thread(captcha_solver.report_error, pic_id)
+        return False
+
+    handle = container.locator("[class*='slider' i]").last
+    if not await handle.count():
+        handle = hint  # 找不到滑钮则用提示文本元素作拖拽起点
+    box = await handle.bounding_box()
+    if not box:
+        return False
+    x0 = box["x"] + box["width"] / 2
+    y0 = box["y"] + box["height"] / 2
+    await page.mouse.move(x0, y0)
+    await page.mouse.down()
+    for dx in _track(gap):
+        await page.mouse.move(x0 + dx, y0 + random.uniform(-1.5, 1.5), steps=2)
+    await page.mouse.up()
+
+    for _ in range(5):  # 弹窗最多 5s 内消失
+        await page.wait_for_timeout(1000)
+        if _slider_locator(page) is None:
+            return True
+    await asyncio.to_thread(captcha_solver.report_error, pic_id)
+    return False
+
+
+async def _wait_code_or_slider(page, btn, send_notice) -> bool:
+    """点发码后等待结果：按钮进倒计时 → 成功；弹滑块 → 过验证后继续等。"""
+    for _ in range(8):  # 约 24s+，覆盖滑块弹窗出现与拖动耗时
+        try:
+            txt = (await btn.inner_text()).strip()
+        except Exception:
+            txt = ""
+        if "重新发送" in txt or "s)" in txt:
+            return True
+        slider = _slider_locator(page)
+        if slider is not None:
+            if not await _solve_slider(page, slider, send_notice):
+                return False
+            await page.wait_for_timeout(2000)
+            continue
+        await page.wait_for_timeout(3000)
+    return False
+
+
+async def _send_code(page, send_notice) -> bool:
     """勾选协议并点获取验证码，返回是否真正发出（按钮进入倒计时）。
 
     未勾选协议时点击会被前端静默吞掉（无请求无报错，实测），因此必须先勾
     协议再点发码。协议状态无法从 class 判断，两轮覆盖两种初始状态：
     先勾再点；若协议本已勾选（第一轮误取消），第二轮补勾回再点。
+    点发码后可能弹滑块人机验证（偶发风控），检测到则走打码平台流程。
     """
     btn = page.locator(".login-container .code-button").first
     agree = page.locator(".login-container .agree-icon")
@@ -81,12 +179,7 @@ async def _send_code(page) -> bool:
             await btn.click(timeout=5000)
         except Exception:
             pass
-        await page.wait_for_timeout(4000)
-        try:
-            txt = (await btn.inner_text()).strip()
-        except Exception:
-            txt = ""
-        if "重新发送" in txt or "s)" in txt:
+        if await _wait_code_or_slider(page, btn, send_notice):
             return True
     return False
 
@@ -141,7 +234,7 @@ async def _sms_login() -> int:
                 return 2
             await phone_el.first.fill(PHONE)
             await page.wait_for_timeout(500)
-            if not await _send_code(page):
+            if not await _send_code(page, send_notice):
                 send_notice("**⚠️ 小红书短信登录**\n点击获取验证码无响应（可能风控）",
                             summary="小红书登录异常")
                 return 2
