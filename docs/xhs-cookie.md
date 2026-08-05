@@ -109,7 +109,7 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
 **前置条件**：手机装短信转发软件，配置转发目标为转发邮箱；以下环境变量
 （.bashrc 已设）：
 
-- `GET_SMS_PHONE`：小红书登录手机号（如 180***2246）
+- `GET_SMS_PHONE`：小红书登录手机号（如 180\*\*\*2246）
 - `GET_SMS_MAIL`：短信转发邮箱账号（如 sms-forward@126.com）
 - `GET_SMS_MAIL_KEY`：邮箱授权码
 

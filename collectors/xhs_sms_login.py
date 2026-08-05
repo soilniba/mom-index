@@ -3,7 +3,7 @@
 xhs_sms_login.py — 小红书短信验证码自动登录（替代手动扫码）
 
 流程：Playwright 打开小红书登录弹窗 → 填手机号 → 勾选协议 → 点获取验证码 →
-手机收短信后由转发软件转到 sms-forward@126.com 邮箱 → sms_mail 轮询 POP3 提取 →
+手机收短信后由转发软件转到转发邮箱 → sms_mail 轮询 POP3 提取 →
 自动填入验证码并登录 → 新 cookie 写回 ~/.config/mom-index/env 的 XHS_COOKIE。
 
 手机号、邮箱账号、授权码均从环境变量读取（.bashrc 已设）：
