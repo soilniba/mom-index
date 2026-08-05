@@ -18,6 +18,7 @@ sms_mail.py — 短信转发邮箱收件模块（POP3）
 """
 
 import email
+import email.utils
 import os
 import poplib
 import re
@@ -25,6 +26,8 @@ import time
 
 MAIL_HOST = "pop.126.com"
 MAIL_PORT = 995
+LOOKBACK = 30  # 首轮回溯扫描的邮件数
+FRESH_WINDOW = 200  # 只认该秒数内到达的邮件（验证码 3 分钟有效）
 
 
 def _connect() -> poplib.POP3_SSL:
@@ -60,13 +63,24 @@ def _body_of(em) -> str:
     return ""
 
 
+def _fresh(em, cutoff: float) -> bool:
+    """邮件 Date 是否在 cutoff 之后（解析失败视为不新鲜，保守跳过）。"""
+    try:
+        dt = email.utils.parsedate_to_datetime(em.get("Date", ""))
+    except Exception:
+        return False
+    return dt is not None and dt.timestamp() >= cutoff
+
+
 def wait_for_code(pattern: str = r"内容：\s*(\d{6})",
                   timeout: int = 175, interval: int = 8) -> str | None:
     """轮询 POP3 等新邮件中的验证码，返回第一个匹配的 6 位数字。
 
-    只认轮询开始后到达的新邮件（POP3 编号递增），避免把历史邮件里的
-    数字当验证码。超时返回 None。
+    首轮回溯最近 LOOKBACK 封邮件并叠加时间窗过滤（只认 FRESH_WINDOW 秒内
+    到达的），避免发码后至首次查询之间已到达的邮件被永久跳过；后续轮
+    只查新增邮件（编号递增）。超时返回 None。
     """
+    cutoff = time.time() - FRESH_WINDOW
     deadline = time.time() + timeout
     since = None
     while time.time() < deadline:
@@ -76,11 +90,14 @@ def wait_for_code(pattern: str = r"内容：\s*(\d{6})",
             total = p.stat()[0]
             if since is None:
                 since = total
-            for i in range(since + 1, total + 1):
+                start = max(1, total - LOOKBACK + 1)
+            else:
+                start = since + 1
+            for i in range(start, total + 1):
                 _, lines, _ = p.top(i, 80)
                 em = email.message_from_bytes(b"\r\n".join(lines))
                 m = re.search(pattern, _body_of(em))
-                if m:
+                if m and _fresh(em, cutoff):
                     return m.group(1)
         except Exception:
             pass  # 网络抖动，下一轮重试
