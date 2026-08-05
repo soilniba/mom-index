@@ -2,8 +2,12 @@
 """
 sms_mail.py — 短信转发邮箱收件模块（POP3）
 
-转发软件把手机短信转发到 sms-forward@126.com，本模块轮询 POP3 提取验证码。
+转发软件把手机短信转发到转发邮箱，本模块轮询 POP3 提取验证码。
 平台无关，供 xhs_sms_login 等自动登录脚本复用。
+
+配置（环境变量，与 xhs_sms_login 共用）：
+- GET_SMS_MAIL：邮箱账号（如 sms-forward@126.com）
+- GET_SMS_MAIL_KEY：邮箱授权码
 
 为什么 POP3 而不是 IMAP：网易对 IMAP 有 "Unsafe Login" 安全拦截
 （2026-08-05 实测，连续多次均被拒），POP3 稳定可用且不分文件夹，
@@ -21,13 +25,12 @@ import time
 
 MAIL_HOST = "pop.126.com"
 MAIL_PORT = 995
-MAIL_USER = "sms-forward@126.com"
 
 
 def _connect() -> poplib.POP3_SSL:
-    """POP3 连接（授权码从环境变量读取，不落盘）。"""
+    """POP3 连接（账号与授权码从环境变量读取，不落盘）。"""
     p = poplib.POP3_SSL(MAIL_HOST, MAIL_PORT, timeout=20)
-    p.user(MAIL_USER)
+    p.user(os.environ["GET_SMS_MAIL"])
     p.pass_(os.environ["GET_SMS_MAIL_KEY"])
     return p
 

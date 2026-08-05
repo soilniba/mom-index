@@ -102,13 +102,16 @@ cookie 写入本文件 XHS_COOKIE，后台自动跑 xhs_cookie_check.py 验证�
 ## 短信验证码自动登录（xhs_sms_login）
 
 `collectors/xhs_sms_login.py`：短信验证码登录替代扫码（2026-08-05 实测全链路
-打通）。流程：Playwright 打开登录弹窗 → 填手机号（`XHS_PHONE` 可覆盖，默认
-180***2246）→ 勾协议 → 点获取验证码 → 手机转发软件把短信转到
-sms-forward@126.com → `collectors/sms_mail.py` 轮询 POP3 提取验证码 → 自动填入
-登录 → cookie 写回 env。全程无需人工。
+打通）。流程：Playwright 打开登录弹窗 → 填手机号 → 勾协议 → 点获取验证码 →
+手机转发软件把短信转到转发邮箱 → `collectors/sms_mail.py` 轮询 POP3 提取
+验证码 → 自动填入登录 → cookie 写回 env。全程无需人工。
 
-**前置条件**：手机装短信转发软件，配置转发目标 sms-forward@126.com；邮箱授权码
-放环境变量 `GET_SMS_MAIL_KEY`（.bashrc 已设）。
+**前置条件**：手机装短信转发软件，配置转发目标为转发邮箱；以下环境变量
+（.bashrc 已设）：
+
+- `GET_SMS_PHONE`：小红书登录手机号（如 180***2246）
+- `GET_SMS_MAIL`：短信转发邮箱账号（如 sms-forward@126.com）
+- `GET_SMS_MAIL_KEY`：邮箱授权码
 
 **为什么 POP3 不是 IMAP**：网易对 IMAP 有 "Unsafe Login" 安全拦截（本机
 连续多次实测均被拒），POP3 稳定可用，且不分文件夹（垃圾箱里的转发邮件也能

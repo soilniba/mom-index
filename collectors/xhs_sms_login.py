@@ -6,8 +6,9 @@ xhs_sms_login.py — 小红书短信验证码自动登录（替代手动扫码�
 手机收短信后由转发软件转到 sms-forward@126.com 邮箱 → sms_mail 轮询 POP3 提取 →
 自动填入验证码并登录 → 新 cookie 写回 ~/.config/mom-index/env 的 XHS_COOKIE。
 
-手机号：XHS_PHONE 环境变量可覆盖，默认 180***2246（转发软件已配置）。
-邮箱：sms-forward@126.com，授权码从环境变量 GET_SMS_MAIL_KEY 读取（.bashrc 已设）。
+手机号、邮箱账号、授权码均从环境变量读取（.bashrc 已设）：
+GET_SMS_PHONE（手机号，转发软件已配置）、GET_SMS_MAIL（邮箱账号）、
+GET_SMS_MAIL_KEY（邮箱授权码）。
 
 触发方式：手动运行（python3 collectors/xhs_sms_login.py）或 feishu-bot 调用。
 退出码：0=登录成功（cookie 已写回）、1=验证码超时未到、2=异常
@@ -28,7 +29,8 @@ except ImportError:
     from xhs_cookie_check import update_env_cookie
 
 HOME_URL = "https://www.xiaohongshu.com/"
-PHONE = os.environ.get("XHS_PHONE", "180***2246")
+REQUIRED_ENV = ("GET_SMS_PHONE", "GET_SMS_MAIL", "GET_SMS_MAIL_KEY")
+PHONE = os.environ.get("GET_SMS_PHONE", "")
 CODE_TIMEOUT = 175  # 与按钮倒计时一致：验证码 3 分钟有效，175s 后可重发
 MASKED_PHONE = PHONE[:3] + "***" + PHONE[-4:]
 
@@ -93,8 +95,9 @@ async def _sms_login() -> int:
     from playwright.async_api import async_playwright
 
     send_notice = _load_notify()
-    if not os.environ.get("GET_SMS_MAIL_KEY"):
-        send_notice("**❌ 小红书短信登录**\n环境变量 GET_SMS_MAIL_KEY 未设置",
+    missing = [v for v in REQUIRED_ENV if not os.environ.get(v)]
+    if missing:
+        send_notice(f"**❌ 小红书短信登录**\n环境变量未设置: {', '.join(missing)}",
                     summary="小红书登录异常")
         return 2
     send_notice(
