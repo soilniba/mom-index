@@ -30,17 +30,34 @@ MAIL_PORT = 995
 def _connect() -> poplib.POP3_SSL:
     """POP3 连接（账号与授权码从环境变量读取，不落盘）。"""
     p = poplib.POP3_SSL(MAIL_HOST, MAIL_PORT, timeout=20)
-    p.user(os.environ["GET_SMS_MAIL"])
-    p.pass_(os.environ["GET_SMS_MAIL_KEY"])
-    return p
+    try:
+        p.user(os.environ["GET_SMS_MAIL"])
+        p.pass_(os.environ["GET_SMS_MAIL_KEY"])
+        return p
+    except Exception:
+        try:
+            p.quit()
+        except Exception:
+            pass
+        raise
 
 
 def _body_of(em) -> str:
-    if em.is_multipart():
-        for part in em.walk():
-            if part.get_content_type() == "text/plain":
-                return part.get_payload(decode=True).decode("utf-8", "ignore")
-    return em.get_payload(decode=True).decode("utf-8", "ignore")
+    """提取邮件正文（按 Content-Type charset 解码，兼容 GBK/utf-8）。"""
+    parts = list(em.walk()) if em.is_multipart() else [em]
+    for part in parts:
+        if part.get_content_type() != "text/plain":
+            continue
+        data = part.get_payload(decode=True)
+        if isinstance(data, str):  # 无编码头的邮件直接返回 str
+            return data
+        if data is None:
+            return str(part.get_payload())
+        try:
+            return data.decode(part.get_content_charset() or "utf-8", "ignore")
+        except LookupError:
+            return data.decode("utf-8", "ignore")
+    return ""
 
 
 def wait_for_code(pattern: str = r"内容：\s*(\d{6})",
@@ -59,8 +76,7 @@ def wait_for_code(pattern: str = r"内容：\s*(\d{6})",
             total = p.stat()[0]
             if since is None:
                 since = total
-            start = max(since + 1, total - 10 + 1)
-            for i in range(start, total + 1):
+            for i in range(since + 1, total + 1):
                 _, lines, _ = p.top(i, 80)
                 em = email.message_from_bytes(b"\r\n".join(lines))
                 m = re.search(pattern, _body_of(em))
