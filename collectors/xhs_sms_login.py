@@ -177,8 +177,13 @@ async def _sms_login() -> int:
                 if token or me_el:
                     logged_in = True
                     break
-                # 验证码错误/风控时弹窗会显示 err-msg，提前暴露
-                err = await page.locator(".login-container .err-msg").first.inner_text()
+                # 验证码错误/风控时弹窗会显示 err-msg，提前暴露；
+                # 元素缺失时 inner_text 默认等 30s 会拖死轮询，必须设短超时容错
+                try:
+                    err = await page.locator(
+                        ".login-container .err-msg").first.inner_text(timeout=2000)
+                except Exception:
+                    err = ""
                 if err.strip() and "同意" not in err:
                     send_notice(f"**⚠️ 小红书短信登录**\n{err.strip()}",
                                 summary="小红书登录异常")
