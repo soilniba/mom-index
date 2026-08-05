@@ -70,6 +70,24 @@ def test_api_error_raises(monkeypatch):
         slider_gap(IMG)
 
 
+def test_non_dict_response_raises(monkeypatch):
+    resp = mock.MagicMock()
+    resp.read.return_value = b"[1,2]"
+    resp.__enter__.return_value = resp
+    monkeypatch.setattr(
+        "collectors.captcha_solver.urllib.request.urlopen",
+        mock.Mock(return_value=resp))
+    with pytest.raises(CaptchaError, match="非 JSON 对象"):
+        slider_gap(IMG)
+
+
+def test_bad_coords_raises(monkeypatch):
+    _mock_upload(monkeypatch, {"err_no": 0, "err_str": "OK", "pic_id": "p",
+                               "pic_str": "abc"})
+    with pytest.raises(CaptchaError, match="坐标解析失败"):
+        slider_gap(IMG)
+
+
 def test_missing_config_raises(monkeypatch):
     monkeypatch.delenv("CAPTCHA_USER")
     with pytest.raises(ConfigError):

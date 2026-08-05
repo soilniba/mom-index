@@ -57,7 +57,10 @@ def _post(url: str, params: dict) -> dict:
         url, data=urllib.parse.urlencode(params).encode(),
         headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise CaptchaError(f"打码平台响应非 JSON 对象: {type(data).__name__}")
+    return data
 
 
 def _upload(codetype: int, img_bytes: bytes) -> dict:
@@ -84,8 +87,11 @@ def solve(codetype: int, img_bytes: bytes) -> tuple[str, str]:
 def _coords(pic_str: str) -> list[tuple[int, int]]:
     """解析坐标结果，兼容 "x,y" / "x,y|x,y" / "x,y,x,y" 三种格式。"""
     tokens = [t for t in pic_str.replace("|", ",").split(",") if t.strip()]
-    return [(int(tokens[i]), int(tokens[i + 1]))
-            for i in range(0, len(tokens) - 1, 2)]
+    try:
+        return [(int(tokens[i]), int(tokens[i + 1]))
+                for i in range(0, len(tokens) - 1, 2)]
+    except ValueError:
+        raise CaptchaError(f"坐标解析失败: {pic_str!r}") from None
 
 
 def slider_gap(img_bytes: bytes) -> tuple[int, str]:
