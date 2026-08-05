@@ -140,7 +140,11 @@ async def _solve_slider(page, hint, send_notice) -> bool:
 
 
 async def _wait_code_or_slider(page, btn, send_notice) -> bool:
-    """点发码后等待结果：按钮进倒计时 → 成功；弹滑块 → 过验证后继续等。"""
+    """点发码后等待结果：按钮进倒计时 → 成功；弹滑块 → 过验证后继续等。
+
+    滑块尝试受 MAX_SLIDER_TRIES 限制（每次尝试扣一次打码费）。
+    """
+    slider_tries = 0
     for _ in range(8):  # 约 24s+，覆盖滑块弹窗出现与拖动耗时
         try:
             txt = (await btn.inner_text()).strip()
@@ -150,6 +154,9 @@ async def _wait_code_or_slider(page, btn, send_notice) -> bool:
             return True
         slider = _slider_locator(page)
         if slider is not None:
+            if slider_tries >= MAX_SLIDER_TRIES:
+                return False
+            slider_tries += 1
             if not await _solve_slider(page, slider, send_notice):
                 return False
             await page.wait_for_timeout(2000)
