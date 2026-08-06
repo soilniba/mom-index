@@ -9,7 +9,7 @@
 
 ```bash
 ~/.config/mom-index/env   # 与 XHS_COOKIE 同文件
-export DEEPSEEK_API_KEY='...'
+export MOM_INDEX_API_KEY='...'
 export DEEPSEEK_OPENAI_URL='https://api.deepseek.com'
 export LLM_MODEL='deepseek-v4-flash'
 ```
@@ -56,4 +56,4 @@ export LLM_MODEL='deepseek-v4-flash'
   （当日文件无 LLM 结果行即回退）
 - 股吧不调 LLM：无正文时 flash 会编造不存在的上下文（实测出现
   "我买点看看能不能赚钱"被判"专业债市收评"的幻觉），且实测收益小
-- 模型列表变化时核对 `DEEPSEEK_API_KEY` 权限下的可用模型
+- 模型列表变化时核对 `MOM_INDEX_API_KEY` 权限下的可用模型

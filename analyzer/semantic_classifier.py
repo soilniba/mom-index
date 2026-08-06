@@ -5,7 +5,7 @@ semantic_classifier.py — DeepSeek 语义分类器
 任何失败（无 key/网络/解析）返回 None，调用方回退关键词规则，不影响采集。
 
 key 与 base_url 从环境变量读取（~/.config/mom-index/env 或 shell 环境）：
-  DEEPSEEK_API_KEY / DEEPSEEK_OPENAI_URL / LLM_MODEL
+  MOM_INDEX_API_KEY / DEEPSEEK_OPENAI_URL / LLM_MODEL
 """
 import json
 import os
@@ -19,7 +19,7 @@ BASE_URL = ""
 MODEL = ""
 
 ENV_FILE = Path("~/.config/mom-index/env").expanduser()
-KEY_VAR = "DEEPSEEK_API_KEY"
+KEY_VAR = "MOM_INDEX_API_KEY"
 URL_VAR = "DEEPSEEK_OPENAI_URL"
 MODEL_VAR = "LLM_MODEL"
 DEFAULT_MODEL = "deepseek-v4-flash"
@@ -96,7 +96,7 @@ def _call_llm(batch: List[Dict], sector: str) -> Optional[List[Dict]]:
 
     _load_config()
     if not API_KEY:
-        print("[semantic] 未配置 DEEPSEEK_API_KEY", file=sys.stderr)
+        print("[semantic] 未配置 MOM_INDEX_API_KEY", file=sys.stderr)
         return None
 
     payload = json.dumps([
