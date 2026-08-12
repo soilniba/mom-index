@@ -100,7 +100,7 @@ def _sector_card(name: str, emoji: str, sector: dict) -> str:
 
 
 def _post_line(i: int, p: dict) -> str:
-    """单条小白帖：🔗原帖链接、badge、板块、意图、标题、解析、信号。"""
+    """单条小白帖：🔗原帖链接、badge、板块、意图、标题和时间。"""
     badge = "纯小白" if (p.get("score") or 0) >= 50 else "偏小白"
     url = p.get("url", "")
     link = f"[🔗]({url}) " if url else ""
@@ -112,11 +112,6 @@ def _post_line(i: int, p: dict) -> str:
     ]
     if p.get("date"):
         lines.append(f"   🕐 {p['date']}")
-    if p.get("reasoning"):
-        lines.append(f"   📝 {p['reasoning']}")
-    signals = p.get("key_signals") or []
-    if signals:
-        lines.append(f"   ▸ {' · '.join(signals)}")
     return "\n".join(lines)
 
 

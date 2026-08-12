@@ -85,6 +85,15 @@ mom-index/
 └── README.md
 ```
 
+## 文档索引
+
+- [需求记录](docs/requirements.md)
+- [每日飞书推送设计与运维](docs/feishu-daily.md)
+- [LLM 分类器](docs/llm-classifier.md)
+- [部署](docs/deploy.md)
+- [小红书 Cookie](docs/xhs-cookie.md)
+- [微博数据源](docs/weibo.md)
+
 ## 快速开始
 
 ```bash
