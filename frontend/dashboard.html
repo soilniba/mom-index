@@ -219,6 +219,16 @@ function renderCards(data) {
   container.innerHTML = Object.entries(latest.sectors).map(([key, sector]) => {
     const cls = getSignalClass(sector.index);
     const d = sector.details || {};
+    const buyCount = Number(d.buy_count) || 0;
+    const sellCount = Number(d.sell_count) || 0;
+    const hasTradeSignal = buyCount + sellCount > 0;
+    const ratio = Number(d.buy_sell_ratio);
+    const ratioText = hasTradeSignal && Number.isFinite(ratio)
+      ? `${ratio}:1 ${ratio > 1.5 ? '🔥追涨' : ratio > 0.8 ? '⚖️平衡' : '🩸恐慌'}`
+      : '— 无买卖信号';
+    const ratioColor = hasTradeSignal
+      ? (ratio > 1.5 ? '#f87171' : ratio > 0.8 ? '#facc15' : '#4ade80')
+      : '#94a3b8';
     return `
       <div class="card ${key}">
         <div class="sector-name">${getEmoji(sector.index)} ${SECTOR_NAMES[key]}</div>
@@ -238,17 +248,17 @@ function renderCards(data) {
         </div>
         <!-- 买卖比进度条 -->
         <div style="margin-top:8px; display:flex; align-items:center; gap:6px; font-size:10px; color:#64748b;">
-          <span>卖出 ${d.sell_count||0}</span>
+          <span>卖出 ${sellCount}</span>
           <div style="flex:1; height:5px; background:#2d1f1f; border-radius:3px; overflow:hidden; display:flex;">
-            <div style="width:${(d.buy_count||0)/(Math.max(d.buy_count||0, d.sell_count||0, 1))*100}%; height:100%; background:linear-gradient(90deg,#22c55e,#4ade80);"></div>
+            <div style="width:${buyCount/(Math.max(buyCount, sellCount, 1))*100}%; height:100%; background:linear-gradient(90deg,#22c55e,#4ade80);"></div>
           </div>
-          <span>买入 ${d.buy_count||0}</span>
+          <span>买入 ${buyCount}</span>
         </div>
         <div class="detail-row">
           <span>小白帖</span><span>${d.newbie_posts || 0}/${d.valid_posts || d.total_posts || 0} (${d.newbie_ratio || 0}%)</span>
         </div>
         <div class="detail-row">
-          <span>买卖比</span><span style="color:${(d.buy_sell_ratio||0)>1.5?'#f87171':(d.buy_sell_ratio||0)>0.8?'#facc15':'#4ade80'}">${d.buy_sell_ratio||0}:1 ${(d.buy_sell_ratio||0)>1.5?'🔥追涨':(d.buy_sell_ratio||0)>0.8?'⚖️平衡':'🩸恐慌'}</span>
+          <span>买卖比</span><span style="color:${ratioColor}">${ratioText}</span>
         </div>
       </div>
     `;

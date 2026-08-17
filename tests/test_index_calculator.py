@@ -103,16 +103,25 @@ def test_买卖子指数平台聚合():
     d = compute_sector_index(posts)["details"]
     assert d["mom_buy_index"] == 50.1
     assert d["mom_sell_index"] == 33.3
-    assert d["buy_sell_ratio"] == 1.6
+    assert d["buy_sell_ratio"] == 1.2
 
 
-def test_卖出为零时买卖比封顶():
+def test_卖出为零时买卖比使用中性先验():
     posts = [make_post("xiaohongshu", 60, intent="buy", strength=0.5)
              for _ in range(5)]
     posts += [make_post("guba", 60, intent="buy", strength=0.5)
               for _ in range(5)]
     d = compute_sector_index(posts)["details"]
-    assert d["buy_sell_ratio"] == 99.9  # sell=0 → 买入绝对占优，封顶
+    assert d["buy_sell_ratio"] == 2.0  # sell=0 → 仅表达偏买入，不再返回99.9
+
+
+def test_买入为零时买卖比使用中性先验():
+    posts = [make_post("xiaohongshu", 60, intent="sell", strength=0.5)
+             for _ in range(5)]
+    posts += [make_post("guba", 60, intent="sell", strength=0.5)
+              for _ in range(5)]
+    d = compute_sector_index(posts)["details"]
+    assert d["buy_sell_ratio"] == 0.5  # buy=0 → 对称地表达偏卖出
 
 
 def test_无小白时买卖比为零():

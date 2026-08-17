@@ -26,6 +26,10 @@ PLATFORM_WEIGHTS = {
     "guba": 0.25,
 }
 
+# 买卖比的中性先验强度。平台加权占比总和约为 1，使用同等强度的对称先验
+# 让单边无样本只表达方向，不被除零放大成极端值。
+BUY_SELL_PRIOR = 1.0
+
 
 def _platform_metrics(posts: List) -> Dict:
     """单个平台内聚合四个维度 + 买卖分量。无有效帖（全是垃圾帖）返回 None。"""
@@ -146,13 +150,14 @@ def compute_sector_index(analysis_results: List) -> Dict:
         sell_intensity * 100 * 0.20
     )), 1)
 
-    # 买卖比: >1 表示买入情绪占优, <1 表示恐慌卖出占优（加权占比比）
+    # 买卖比: >1 表示买入情绪占优, <1 表示恐慌卖出占优。
+    # 对加权占比加入对称中性先验，避免单边无样本时把有限观测误读为无限比值。
     if newbie_count == 0 or (buy_ratio <= 0 and sell_ratio <= 0):
         buy_sell_ratio = 0.0  # 无小白，或全为观望意图 → 无买卖倾向
-    elif sell_ratio <= 0:
-        buy_sell_ratio = 99.9  # 卖出为 0 且买入 > 0 → 买入绝对占优，封顶防除零
     else:
-        buy_sell_ratio = round(min(99.9, buy_ratio / sell_ratio), 1)
+        buy_sell_ratio = round(
+            (buy_ratio + BUY_SELL_PRIOR) / (sell_ratio + BUY_SELL_PRIOR), 1
+        )
 
     return {
         "index": index,

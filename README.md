@@ -88,6 +88,7 @@ mom-index/
 ## 文档索引
 
 - [需求记录](docs/requirements.md)
+- [买卖比异常值处理设计](docs/buy-sell-ratio.md)
 - [每日飞书推送设计与运维](docs/feishu-daily.md)
 - [LLM 分类器](docs/llm-classifier.md)
 - [部署](docs/deploy.md)
@@ -176,6 +177,9 @@ cd frontend && python -m http.server 8765
 宝妈买入 = 买入小白占比×50 + 小白热度×30 + 买入强度×20
 宝妈卖出 = 卖出小白占比×50 + 小白热度×30 + 卖出强度×20
 ```
+
+买卖比采用对称中性先验平滑：`(平台加权买入占比 + 1) / (平台加权卖出占比 + 1)`；
+两边都没有买卖信号时显示“无买卖信号”，避免把单边零样本误报为 `99.9:1`。
 
 ## 前端看板
 
