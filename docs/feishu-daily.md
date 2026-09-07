@@ -18,7 +18,7 @@
   历史不足 30 天时用全部历史天数。
 - 绘制：Pillow 手绘 PNG（1200×800，无新依赖），样式与 `frontend/dashboard.html`
   图表一致——暗底 `#0f172a`、板块配色（青/黄/紫/绿）、0-100 固定纵轴、
-  半透明区域填充、日期均分刻度。
+  纯折线（不填充）、日期均分刻度。
 - 发送：`/relay/upload/image` 上传拿 `image_key`，随板块卡片走
   `/relay/send/markdown` 的 `image_key` + `image_position="after_title"` 内嵌标题下方。
 - 失败容错：绘图/上传失败或历史为空时，静默降级为原无图卡片，不中断发送。

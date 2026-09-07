@@ -46,8 +46,10 @@ def test_曲线图生成合法png():
     img = Image.open(io.BytesIO(png))
     assert img.size == (1200, 800)
     assert img.mode == "RGBA"
-    # 冷清数据，曲线应落在图内：取图中曲线颜色像素数量 > 0
-    assert img.getcolors(maxcolors=100000) is not None
+    # 曲线必须被真实绘制：统计目标色像素（空白图/未绘制时计数为 0）
+    target = (6, 182, 212)  # #06b6d4
+    count = sum(1 for px in img.convert("RGB").getdata() if px == target)
+    assert count > 0
 
 
 def test_曲线图无数据返回空():

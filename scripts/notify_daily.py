@@ -125,10 +125,8 @@ def _chart_png(records: list, color: str) -> bytes:
         draw.text((xx, h - bottom + 10), (records[i].get("date") or "")[5:],
                   font=font_sm, fill=CHART_TICK, anchor="mt")
 
-    # 曲线 + 半透明区域填充 + 首末端点
+    # 曲线（纯折线，不做区域填充）+ 首末端点
     pts = [(x_at(i), y_at(float(r.get("index", 0)))) for i, r in enumerate(records)]
-    rgb = tuple(int(color.lstrip("#")[j:j + 2], 16) for j in (0, 2, 4))
-    draw.polygon(pts + [(pts[-1][0], top + ph), (pts[0][0], top + ph)], fill=(*rgb, 36))
     draw.line(pts, fill=color, width=3, joint="curve")
     for px, py in (pts[0], pts[-1]):
         draw.ellipse([px - 5, py - 5, px + 5, py + 5], fill=color)
