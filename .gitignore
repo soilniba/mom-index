@@ -36,3 +36,6 @@ desktop.ini
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# A/B 测试数据（运行时生成，含 xsec_token 勿泄漏）
+data/ab_test/*.jsonl
