@@ -2,9 +2,9 @@
 """
 notify_daily.py — 每日把最新宝妈指数推送到飞书「宝妈指数」群
 
-读取 data/dashboard_data.json，生成 4 张板块卡片 + 1 张"今日最小白帖"卡片，
-通过本机 feishu-bot relay API（127.0.0.1:8410）发送 markdown 卡片。
-token 从环境变量 FEISHU_BOT_TOKEN 或 ~/.config/mom-index/env 读取。
+读取 data/dashboard_data.json，生成 4 张板块卡片（内嵌近 30 天指数曲线图）
++ 1 张"今日最小白帖"卡片，通过本机 feishu-bot relay API（127.0.0.1:8410）
+发送 markdown 卡片。token 从环境变量 FEISHU_BOT_TOKEN 或 ~/.config/mom-index/env 读取。
 
 用法：
   python3 scripts/notify_daily.py [data_dir]
@@ -14,14 +14,19 @@ token 从环境变量 FEISHU_BOT_TOKEN 或 ~/.config/mom-index/env 读取。
 """
 
 import argparse
+import io
 import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from PIL import Image, ImageDraw, ImageFont
+
 RELAY_URL = "http://127.0.0.1:8410/relay/send/markdown"
+UPLOAD_URL = "http://127.0.0.1:8410/relay/upload/image"
 MOM_CHAT_ID = "oc_47ca0e5ecb7d20cf524ba7e9899023c1"  # 宝妈指数群
 ENV_FILE = Path("~/.config/mom-index/env").expanduser()
 TOKEN_VAR = "FEISHU_BOT_TOKEN"
@@ -29,6 +34,18 @@ TOKEN_VAR = "FEISHU_BOT_TOKEN"
 SECTOR_EMOJI = {"nasdaq": "📈", "gold": "🥇", "cpo": "🔌", "semiconductor": "💾"}
 SECTOR_NAMES = {"nasdaq": "纳斯达克", "gold": "黄金", "cpo": "CPO通信", "semiconductor": "半导体"}
 SOURCE_NAMES = {"xiaohongshu": "小红书", "weibo": "微博", "guba": "股吧"}
+
+# 曲线图样式：与 frontend/dashboard.html 图表一致的暗色主题
+CHART_DAYS = 30                 # 取最近 N 天；不足时用全部历史
+CHART_SIZE = (1200, 800)        # 3:2，适配飞书卡片图片显示
+CHART_BG = "#0f172a"
+CHART_TEXT = "#e2e8f0"
+CHART_TICK = "#64748b"
+CHART_GRID = (51, 65, 85, 60)   # #334155 半透明
+SECTOR_COLORS = {"nasdaq": "#06b6d4", "gold": "#fbbf24",
+                 "cpo": "#a78bfa", "semiconductor": "#34d399"}
+FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+FONT_INDEX_SC = 2               # Noto Sans CJK SC（见 getname 遍历确认）
 
 
 def get_token() -> str:
@@ -43,13 +60,16 @@ def get_token() -> str:
     return r.stdout.strip()
 
 
-def _send_markdown(markdown: str, summary: str) -> bool:
-    """发送一张 markdown 卡片到宝妈指数群。"""
+def _send_markdown(markdown: str, summary: str,
+                   image_key: str = "", image_position: str = "") -> bool:
+    """发送一张 markdown 卡片到宝妈指数群。image_key 非空时图片内嵌卡片标题下方。"""
     body = json.dumps({
         "chat_id": MOM_CHAT_ID,
         "markdown": markdown,
         "summary": summary,
         "source": "mom-index",
+        "image_key": image_key,
+        "image_position": image_position,
     }).encode()
     headers = {"Content-Type": "application/json"}
     token = get_token()
@@ -65,6 +85,74 @@ def _send_markdown(markdown: str, summary: str) -> bool:
     except Exception as e:
         print(f"[notify_daily] 发送失败: {e}", file=sys.stderr)
         return False
+
+
+def _chart_window(records: list) -> list:
+    """取最近 CHART_DAYS 天；不足则用全部历史。"""
+    if len(records) > CHART_DAYS:
+        return records[-CHART_DAYS:]
+    return records
+
+
+def _chart_png(records: list, color: str) -> bytes:
+    """绘制单板块宝妈指数曲线图 PNG（暗色 0-100 轴，与网页 dashboard 一致）。"""
+    records = _chart_window(records)
+    if not records:
+        return b""
+    w, h = CHART_SIZE
+    img = Image.new("RGBA", CHART_SIZE, CHART_BG)
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype(FONT_PATH, 22, index=FONT_INDEX_SC)
+    font_sm = ImageFont.truetype(FONT_PATH, 20, index=FONT_INDEX_SC)
+
+    left, right, top, bottom = 70, 30, 40, 60
+    pw, ph = w - left - right, h - top - bottom
+    n = len(records)
+    x_at = lambda i: left + (i * pw / (n - 1) if n > 1 else pw / 2)
+    y_at = lambda v: top + ph - (v / 100 * ph)
+
+    # 横向网格 + 纵轴刻度（0-100，每 20 一格）
+    for v in range(0, 101, 20):
+        yy = y_at(v)
+        draw.line([(left, yy), (w - right, yy)], fill=CHART_GRID, width=1)
+        draw.text((left - 10, yy), str(v), font=font, fill=CHART_TICK, anchor="rm")
+
+    # 纵向网格 + 日期刻度（最多约 6 条）
+    step = max(1, -(-n // 6))  # ceil
+    for i in range(0, n, step):
+        xx = x_at(i)
+        draw.line([(xx, top), (xx, h - bottom)], fill=CHART_GRID, width=1)
+        draw.text((xx, h - bottom + 10), (records[i].get("date") or "")[5:],
+                  font=font_sm, fill=CHART_TICK, anchor="mt")
+
+    # 曲线 + 半透明区域填充 + 首末端点
+    pts = [(x_at(i), y_at(float(r.get("index", 0)))) for i, r in enumerate(records)]
+    rgb = tuple(int(color.lstrip("#")[j:j + 2], 16) for j in (0, 2, 4))
+    draw.polygon(pts + [(pts[-1][0], top + ph), (pts[0][0], top + ph)], fill=(*rgb, 36))
+    draw.line(pts, fill=color, width=3, joint="curve")
+    for px, py in (pts[0], pts[-1]):
+        draw.ellipse([px - 5, py - 5, px + 5, py + 5], fill=color)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _upload_image(file_path: str) -> str:
+    """上传图片到飞书，返回 image_key；失败返回 ""（不抛异常）。"""
+    body = json.dumps({"file_path": file_path}).encode()
+    headers = {"Content-Type": "application/json"}
+    token = get_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        req = Request(UPLOAD_URL, data=body, method="POST", headers=headers)
+        with urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        return data.get("image_key", "") if data.get("ok") else ""
+    except Exception as e:
+        print(f"[notify_daily] 图片上传失败: {e}", file=sys.stderr)
+        return ""
 
 
 def _buy_sell_label(ratio: float) -> str:
@@ -123,7 +211,7 @@ def _top_card(posts: list) -> str:
 
 
 def send_daily_report(dashboard_path: str) -> bool:
-    """读取 dashboard 数据，发送 4 张板块卡片 + 1 张最小白帖卡片。"""
+    """读取 dashboard 数据，发送 4 张板块卡片（内嵌曲线图）+ 1 张最小白帖卡片。"""
     with open(dashboard_path, encoding="utf-8") as f:
         dashboard = json.load(f)
     if not isinstance(dashboard, dict):
@@ -135,15 +223,32 @@ def send_daily_report(dashboard_path: str) -> bool:
         print("[notify_daily] dashboard 无数据", file=sys.stderr)
         return False
 
+    history = dashboard.get("sector_history") or {}
     ok = True
     for key in ("nasdaq", "gold", "cpo", "semiconductor"):
         sector = sectors.get(key)
         if not isinstance(sector, dict) or not sector:
             continue
         name = SECTOR_NAMES.get(key, key)
+        # 板块曲线图：上传后内嵌卡片标题下方；失败静默降级为无图卡片
+        image_key = ""
+        records = history.get(key, []) if isinstance(history, dict) else []
+        if records:
+            try:
+                png = _chart_png(records, SECTOR_COLORS.get(key, "#94a3b8"))
+            except Exception as e:
+                print(f"[notify_daily] 生成 {name} 曲线图失败: {e}", file=sys.stderr)
+                png = b""
+            if png:
+                with tempfile.NamedTemporaryFile(suffix=".png") as f:
+                    f.write(png)
+                    f.flush()
+                    image_key = _upload_image(f.name)
         ok = _send_markdown(
             _sector_card(name, SECTOR_EMOJI.get(key, "📊"), sector),
             f"{name} 宝妈指数 {sector.get('index', '')}",
+            image_key=image_key,
+            image_position="after_title" if image_key else "",
         ) and ok
 
     # 跨板块合并 top 小白帖，按分数降序取前 8（与网页一致）
