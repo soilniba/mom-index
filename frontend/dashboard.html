@@ -265,12 +265,16 @@ function renderCards(data) {
   }).join('');
 }
 
+// 8 月前历史不全（6 月为早期样本、7 月整段缺失），曲线只画 8 月起的数据
+const HISTORY_START_DATE = '2026-08-01';
+
 function renderCharts(data) {
   const history = data.sector_history || {};
-  
-  Object.entries(history).forEach(([sector, records]) => {
+
+  Object.entries(history).forEach(([sector, allRecords]) => {
     const canvasId = `chart-${sector}`;
     const canvas = document.getElementById(canvasId);
+    const records = (allRecords || []).filter(r => r.date >= HISTORY_START_DATE);
     if (!canvas || !records.length) return;
     
     const ctx = canvas.getContext('2d');
