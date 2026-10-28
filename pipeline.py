@@ -110,8 +110,8 @@ def run_pipeline():
 
     # ===== 第6步: 飞书推送 =====
     try:
-        from scripts.notify_daily import send_daily_report
-        if send_daily_report(os.path.join(DATA_DIR, "dashboard_data.json")):
+        from scripts.daily_reports import send_reports
+        if send_reports(DATA_DIR):
             print("  ✅ 已推送: 飞书「宝妈指数」群")
         else:
             print("  ⚠️ 飞书推送失败（不影响主流程）")
