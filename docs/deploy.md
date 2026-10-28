@@ -62,6 +62,8 @@ location /mom/ {
 
 页面数据来自 `frontend/data/dashboard_data.json`（本地生成，gitignore 不入库）。**每日自动刷新**：`mom-index-collect.timer` 每天 15:30 UTC（北京 23:30）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。周末也会跑（股吧无新帖，结果与周五相同，同日记录被覆盖，幂等无害）。
 
+通知阶段先发完整宝妈报告，再通过 `stock_data` 更新并发送沪深300ETF规模占比；运行环境需安装本机共享库及其 pandas/Tushare 依赖。`TUSHARE_TOKEN` 继承 systemd user 环境，只在进程中读取；本次没有写入或更改凭据文件。新增指标的历史、缺失日期说明与单独预览方式见 [运行记录](etf-oi/operations.md)。
+
 **自动采集含股吧 + 小红书（Playwright 免费采集）**：定时任务直接跑 `python pipeline.py`。
 小红书通过 `~/.config/mom-index/env` 的 XHS_COOKIE 登录态免费采集（原理见 [xhs-cookie.md](xhs-cookie.md)），
 采集后自动续期 cookie；无 cookie 或设置 `MOM_INDEX_NO_XHS=1` 时自动跳过（不产出数据）。
