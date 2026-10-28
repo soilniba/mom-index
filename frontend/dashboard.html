@@ -127,9 +127,28 @@ body {
 /* 加载状态 */
 .loading { text-align: center; padding: 60px; color: #64748b; }
 
+/* 独立 ETF 指标区 */
+.etf-section { margin-top: 24px; }
+.etf-section h2 { font-size: 20px; margin-bottom: 8px; }
+.etf-caption, .etf-note, .etf-status { font-size: 12px; color: #94a3b8; line-height: 1.8; }
+.etf-status { margin-top: 12px; color: #fbbf24; }
+.etf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 20px 0; }
+.etf-stats dt { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+.etf-stats dd { font-size: 21px; font-weight: 700; overflow-wrap: anywhere; }
+.etf-stats dd small { font-size: 12px; font-weight: 400; color: #94a3b8; }
+.etf-ratio { color: #fbbf24; }
+.etf-plot { position: relative; height: 330px; min-width: 0; }
+.etf-volume-plot { height: 180px; margin: 12px 0 16px; }
+.etf-note { margin-top: 8px; }
+
 @media (max-width: 600px) {
   .charts { grid-template-columns: 1fr; }
   .card .index-value { font-size: 36px; }
+  .etf-section { padding: 16px 12px; }
+  .etf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; }
+  .etf-stats dd { font-size: 19px; }
+  .etf-plot { height: 290px; }
+  .etf-volume-plot { height: 180px; }
 }
 </style>
 </head>
@@ -166,6 +185,25 @@ body {
     <h3>🔥 今日最"小白"的帖子</h3>
     <div id="top-posts"><div class="loading">加载中...</div></div>
   </div>
+
+  <section class="chart-box etf-section" id="etf-oi" aria-labelledby="etf-oi-title">
+    <h2 id="etf-oi-title">沪深300 ETF 规模占比</h2>
+    <p class="etf-caption" id="etf-oi-date"></p>
+    <p class="etf-status" id="etf-oi-status" role="status">数据加载中…</p>
+    <div id="etf-oi-content" hidden>
+      <dl class="etf-stats">
+        <div><dt>四只 ETF 规模占比</dt><dd class="etf-ratio" id="etf-oi-ratio"></dd></div>
+        <div><dt>四只合计规模</dt><dd><span id="etf-oi-assets"></span> <small>亿元</small></dd></div>
+        <div><dt>沪深300流通市值</dt><dd><span id="etf-oi-market-value"></span> <small>万亿元</small></dd></div>
+        <div><dt>沪深300收盘</dt><dd><span id="etf-oi-close"></span> <small>点</small></dd></div>
+      </dl>
+      <div class="etf-plot"><canvas id="chart-etf-oi" role="img" aria-label="ETF规模占比与沪深300点位双轴走势图"></canvas></div>
+      <p class="etf-caption">沪深300成分股成交量（亿股） · 涨红 / 跌绿 / 平盘或缺昨收灰</p>
+      <div class="etf-plot etf-volume-plot"><canvas id="chart-etf-volume" role="img" aria-label="沪深300成交量柱状图"></canvas></div>
+      <p class="etf-note">固定样本：510300（华泰柏瑞） · 510310（易方达） · 510330（华夏） · 159919（嘉实）</p>
+      <p class="etf-note">口径：同日份额 × 单位净值 / 沪深300普通流通市值；反映 ETF 规模，不代表国家队实际持仓。</p>
+    </div>
+  </section>
 </div>
 
 <div class="footer">
@@ -390,5 +428,6 @@ fetch('data/dashboard_data.json')
       `<div class="loading">⚠️ 数据加载失败: ${err.message}<br>请先运行 pipeline.py 生成数据</div>`;
   });
 </script>
+<script src="etf_oi.js"></script>
 </body>
 </html>

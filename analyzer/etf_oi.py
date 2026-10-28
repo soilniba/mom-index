@@ -51,10 +51,10 @@ def build_records(shares, navs, valuations, prices) -> list[dict]:
     sm = {c: _by_date(shares.get(c, []), c, 'trade_date', ('fd_share',)) for c in FUNDS}
     nm = {c: _by_date(navs.get(c, []), c, 'nav_date', ('unit_nav',)) for c in FUNDS}
     vm = _by_date(valuations, '000300.SH', 'trade_date', ('float_mv',))
-    pm = _by_date(prices, '000300.SH', 'trade_date', ('close', 'vol'))
+    pm = _by_date(prices, '000300.SH', 'trade_date', ('close', 'vol', 'pre_close'))
     records = []
     for day in sorted(vm.keys() | pm.keys()):
-        close, volume = pm.get(day, (None, None))
+        close, volume, pre_close = pm.get(day, (None, None, None))
         missing, funds = [], []
         mv = vm.get(day, (None,))[0]
         for label, value in (('流通市值', mv), ('收盘点位', close), ('成交量', volume)):
@@ -82,6 +82,7 @@ def build_records(shares, navs, valuations, prices) -> list[dict]:
         records.append({
             'date': day, 'ratio_pct': ratio, 'etf_assets_yuan': assets,
             'index_float_mv_yuan': mv, 'index_close': close,
+            'index_pre_close': pre_close,
             'volume_shares': volume * 100 if volume is not None else None,
             'funds': funds, 'missing': missing,
         })
@@ -98,6 +99,8 @@ def update_history(path, end_date=None) -> dict:
     end = date.fromisoformat(end_date) if end_date else datetime.now(ZoneInfo('Asia/Shanghai')).date()
     last = max((date.fromisoformat(r['date']) for r in previous), default=START_DATE)
     start = max(START_DATE, last - timedelta(days=45)) if previous else START_DATE
+    if any('index_pre_close' not in r for r in previous):
+        start = START_DATE  # 首次启用涨跌配色时补回历史昨收字段。
     if start > end:
         raise ValueError('更新日期早于现有历史')
     begin, finish = start.strftime('%Y%m%d'), end.strftime('%Y%m%d')
@@ -110,7 +113,7 @@ def update_history(path, end_date=None) -> dict:
     vals = _rows(stock_data.workflow_index_daily_valuation(
         '000300.SH', begin, finish, 'ts_code,trade_date,float_mv'))
     prices = _rows(stock_data.workflow_index_daily_prices(
-        '000300.SH', begin, finish, 'ts_code,trade_date,close,vol'))
+        '000300.SH', begin, finish, 'ts_code,trade_date,close,pre_close,vol'))
     if not vals or not prices:
         raise ValueError('指数市值或行情响应为空，保留旧历史')
     fresh = build_records(shares, navs, vals, prices)

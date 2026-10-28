@@ -68,7 +68,7 @@ def chart_png(records: list) -> bytes:
 
     vtop, vbottom = 830, 975
     vmax = max((r.get('volume_shares') or 0 for r in records), default=0) or 1
-    draw.text((left, 780), '沪深300成分股成交量（亿股）', font=font, fill=CHART_TEXT)
+    draw.text((left, 780), '沪深300成分股成交量（亿股；涨红跌绿）', font=font, fill=CHART_TEXT)
     for i in range(3):
         yy = vbottom - (vbottom - vtop) * i / 2
         draw.line([(left, yy), (right, yy)], fill='#253248', width=1)
@@ -79,7 +79,14 @@ def chart_png(records: list) -> bytes:
         if vol is None:
             continue
         yy = vbottom - vol / vmax * (vbottom-vtop)
-        draw.rectangle((x(i)-half_width, yy, x(i)+half_width, vbottom), fill=VOLUME_COLOR)
+        close, previous_close = row.get('index_close'), row.get('index_pre_close')
+        color = VOLUME_COLOR
+        if close is not None and previous_close is not None:
+            if close > previous_close:
+                color = '#ef4444'
+            elif close < previous_close:
+                color = '#22c55e'
+        draw.rectangle((x(i)-half_width, yy, x(i)+half_width, vbottom), fill=color)
     ticks = sorted(set(round(i * (n-1) / 5) for i in range(6)))
     for i in ticks:
         draw.text((x(i), vbottom+16), records[i]['date'], font=small, fill=CHART_TICK, anchor='mt')

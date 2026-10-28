@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from analyzer.etf_oi import update_history
 from scripts.etf_oi_chart import chart_png
 from scripts.notify_daily import _send_markdown, _upload_image
+from sync_data import publish_etf_oi
 
 
 def build_card(data, update_failed=False):
@@ -60,6 +61,10 @@ def send_etf_oi_report(data_dir, refresh=True) -> bool:
         except (OSError, ValueError):
             data = {}
     valid = any(r.get('ratio_pct') is not None for r in data.get('records', []))
+    try:
+        publish_etf_oi(data_dir)
+    except OSError as exc:
+        print(f'[etf_oi] 网页同步失败：{type(exc).__name__}', file=sys.stderr)
     image_key = ''
     if valid:
         try:
@@ -87,6 +92,7 @@ def main():
         return 0 if send_etf_oi_report(args.data_dir, refresh=not args.no_refresh) else 1
     path = Path(args.data_dir) / 'etf_oi.json'
     data = (json.loads(path.read_text(encoding='utf-8')) if args.no_refresh else update_history(path))
+    publish_etf_oi(args.data_dir)
     if args.preview:
         png = chart_png(data['records'])
         if not png:

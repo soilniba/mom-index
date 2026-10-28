@@ -17,7 +17,8 @@ def inputs(days=('20261026', '20261027')):
     shares = {c: [{'ts_code': c, 'trade_date': d, 'fd_share': 100} for d in days] for c in CODES}
     navs = {c: [{'ts_code': c, 'nav_date': d, 'unit_nav': 2} for d in days] for c in CODES}
     vals = [{'ts_code': '000300.SH', 'trade_date': d, 'float_mv': 10_000_000_000} for d in days]
-    prices = [{'ts_code': '000300.SH', 'trade_date': d, 'close': 4000, 'vol': 100} for d in days]
+    prices = [{'ts_code': '000300.SH', 'trade_date': d, 'close': 4000,
+               'pre_close': 3990, 'vol': 100} for d in days]
     return shares, navs, vals, prices
 
 
@@ -28,6 +29,7 @@ def test_同日四只净资产除普通流通市值并统一单位():
     assert records[-1]['etf_assets_yuan'] == 8_000_000
     assert records[-1]['index_float_mv_yuan'] == 10_000_000_000
     assert records[-1]['volume_shares'] == 10_000
+    assert records[-1]['index_pre_close'] == 3990
     assert len(records[-1]['funds']) == 4
 
 
@@ -119,6 +121,7 @@ def test_增量请求使用45日重叠窗口(tmp_path, monkeypatch):
     fake.fetch_etf_share_history = shares
     monkeypatch.setitem(sys.modules, 'stock_data', fake)
     path = tmp_path / 'etf_oi.json'
-    path.write_text(json.dumps({'records': [{'date': '2026-10-26', 'ratio_pct': 1}]}))
+    path.write_text(json.dumps({'records': [{'date': '2026-10-26', 'ratio_pct': 1,
+                                           'index_pre_close': 3990}]}))
     etf_oi.update_history(path, end_date='2026-10-28')
     assert set(calls) == {('20260911', '20261028')}

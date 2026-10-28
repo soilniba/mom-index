@@ -91,6 +91,7 @@ mom-index/
 - [买卖比异常值处理设计](docs/buy-sell-ratio.md)
 - [每日飞书推送设计与运维](docs/feishu-daily.md)
 - [沪深300 ETF 规模占比：调研与设计](docs/etf-oi/README.md)
+- [沪深300 ETF 网页底部同步展示](docs/etf-oi/web.md)
 - [LLM 分类器](docs/llm-classifier.md)
 - [部署](docs/deploy.md)
 - [小红书 Cookie](docs/xhs-cookie.md)
