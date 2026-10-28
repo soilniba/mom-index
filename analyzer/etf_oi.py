@@ -53,7 +53,8 @@ def build_records(shares, navs, valuations, prices) -> list[dict]:
     vm = _by_date(valuations, '000300.SH', 'trade_date', ('float_mv',))
     pm = _by_date(prices, '000300.SH', 'trade_date', ('close', 'vol'))
     records = []
-    for day, (close, volume) in sorted(pm.items()):
+    for day in sorted(vm.keys() | pm.keys()):
+        close, volume = pm.get(day, (None, None))
         missing, funds = [], []
         mv = vm.get(day, (None,))[0]
         for label, value in (('流通市值', mv), ('收盘点位', close), ('成交量', volume)):

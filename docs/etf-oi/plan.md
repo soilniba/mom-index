@@ -40,7 +40,7 @@
 
 **Files:** `analyzer/etf_oi.py`、`tests/test_etf_oi.py`。
 
-**Interfaces:** `build_records(shares, navs, valuations, prices) -> list[dict]`；`update_history(path, end_date=None) -> dict`。记录字段为 `date/ratio_pct/etf_assets_yuan/index_float_mv_yuan/index_close/volume_shares/funds`；价格基准日期保留缺失记录 `ratio_pct=None`，以便图中断线。顶层有 `updated_at/as_of/records`。
+**Interfaces:** `build_records(shares, navs, valuations, prices) -> list[dict]`；`update_history(path, end_date=None) -> dict`。记录字段为 `date/ratio_pct/etf_assets_yuan/index_float_mv_yuan/index_close/volume_shares/funds`；以指数估值与行情日期并集建记录，缺项保留 `ratio_pct=None`，以便图中断线。顶层有 `updated_at/as_of/records`。
 
 - [ ] 测试手算：四只均 100 万份、净值 2 元，分母 100 亿元，占比应为 0.08%；100 手应为 10,000 股。
 - [ ] 测试缺一只、错日、NaN、零分母和重复冲突；写后运行，确认预期失败。

@@ -61,6 +61,16 @@ def test_等值重复去重而冲突拒绝():
         etf_oi.build_records(shares, navs, vals, prices)
 
 
+def test_行情漏中间一天仍保留缺口不跨日连线():
+    shares, navs, vals, prices = inputs(('20261026', '20261027', '20261028'))
+    prices.pop(1)
+    records = etf_oi.build_records(shares, navs, vals, prices)
+    assert [r['date'] for r in records] == ['2026-10-26', '2026-10-27', '2026-10-28']
+    assert records[1]['ratio_pct'] is None
+    assert records[1]['index_close'] is None
+    assert '收盘点位' in records[1]['missing']
+
+
 def backend(data):
     shares, navs, vals, prices = data
     return SimpleNamespace(
