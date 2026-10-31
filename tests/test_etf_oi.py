@@ -10,118 +10,115 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from analyzer import etf_oi
 
 
-CODES = ('510300.SH', '510310.SH', '510330.SH', '159919.SZ')
+METHOD = 'csi300_etf_free_float_v1'
+FILENAME = 'csi300_etf_position.json'
 
 
-def inputs(days=('20261026', '20261027')):
-    shares = {c: [{'ts_code': c, 'trade_date': d, 'fd_share': 100} for d in days] for c in CODES}
-    navs = {c: [{'ts_code': c, 'nav_date': d, 'unit_nav': 2} for d in days] for c in CODES}
-    vals = [{'ts_code': '000300.SH', 'trade_date': d, 'float_mv': 10_000_000_000} for d in days]
-    prices = [{'ts_code': '000300.SH', 'trade_date': d, 'close': 4000,
-               'pre_close': 3990, 'vol': 100} for d in days]
-    return shares, navs, vals, prices
+def payload():
+    return {
+        'methodology_id': METHOD, 'coverage_start': '20240101', 'coverage_end': '20261030',
+        'source_urls': ['https://www.csindex.com.cn/'],
+        'limitations': ['不代表国家队实际持仓'],
+        'records': [
+            {'date': '2026-10-26', 'ratio_pct': 1.8, 'etf_assets_yuan': 3.6e11,
+             'index_free_float_mv_yuan': 2e13, 'fund_count': 25, 'index_member_count': 300,
+             'membership_effective_from': '20261019', 'missing': [], 'funds': [],
+             'index_close': None, 'index_pre_close': None, 'volume_shares': None},
+            {'date': '2026-10-27', 'ratio_pct': None, 'etf_assets_yuan': None,
+             'index_free_float_mv_yuan': 2e13, 'fund_count': 25, 'index_member_count': 300,
+             'membership_effective_from': '20261019', 'missing': ['ETF份额'], 'funds': [],
+             'index_close': 4000, 'index_pre_close': 3990, 'volume_shares': 1e8},
+        ],
+    }
 
 
-def test_同日四只净资产除普通流通市值并统一单位():
-    records = etf_oi.build_records(*inputs())
-    assert records[-1]['date'] == '2026-10-27'
-    assert records[-1]['ratio_pct'] == pytest.approx(0.08)
-    assert records[-1]['etf_assets_yuan'] == 8_000_000
-    assert records[-1]['index_float_mv_yuan'] == 10_000_000_000
-    assert records[-1]['volume_shares'] == 10_000
-    assert records[-1]['index_pre_close'] == 3990
-    assert len(records[-1]['funds']) == 4
+def backend(monkeypatch, data, calls):
+    def fetch(begin, finish):
+        calls.append((begin, finish))
+        return copy.deepcopy(data)
+    monkeypatch.setitem(sys.modules, 'stock_data', SimpleNamespace(fetch_csi300_etf_position_history=fetch))
 
 
-@pytest.mark.parametrize('kind', ['missing_share', 'wrong_day', 'nan_nav', 'zero_mv', 'bad_close', 'bad_volume'])
-def test_任何必需数据缺失不跨日补值或算零(kind):
-    shares, navs, vals, prices = inputs()
-    if kind == 'missing_share':
-        shares[CODES[0]].pop()
-    elif kind == 'wrong_day':
-        navs[CODES[0]][-1]['nav_date'] = '20261028'
-    elif kind == 'nan_nav':
-        navs[CODES[0]][-1]['unit_nav'] = float('nan')
-    elif kind == 'zero_mv':
-        vals[-1]['float_mv'] = 0
-    elif kind == 'bad_close':
-        prices[-1]['close'] = -1
-    else:
-        prices[-1]['vol'] = float('inf')
-    records = etf_oi.build_records(shares, navs, vals, prices)
-    assert records[0]['ratio_pct'] == pytest.approx(0.08)
-    assert records[-1]['ratio_pct'] is None
-    assert records[-1]['missing']
-
-
-def test_等值重复去重而冲突拒绝():
-    shares, navs, vals, prices = inputs()
-    navs[CODES[0]].append(copy.deepcopy(navs[CODES[0]][-1]))
-    assert len(etf_oi.build_records(shares, navs, vals, prices)) == 2
-    navs[CODES[0]][-1]['unit_nav'] = 3
-    with pytest.raises(ValueError, match='重复|冲突'):
-        etf_oi.build_records(shares, navs, vals, prices)
-
-
-def test_行情漏中间一天仍保留缺口不跨日连线():
-    shares, navs, vals, prices = inputs(('20261026', '20261027', '20261028'))
-    prices.pop(1)
-    records = etf_oi.build_records(shares, navs, vals, prices)
-    assert [r['date'] for r in records] == ['2026-10-26', '2026-10-27', '2026-10-28']
-    assert records[1]['ratio_pct'] is None
-    assert records[1]['index_close'] is None
-    assert '收盘点位' in records[1]['missing']
-
-
-def backend(data):
-    shares, navs, vals, prices = data
-    return SimpleNamespace(
-        fetch_etf_share_history=lambda code, start, end: shares[code],
-        fetch_etf_nav_history=lambda code, start, end: navs[code],
-        workflow_index_daily_valuation=lambda *args, **kwargs: vals,
-        workflow_index_daily_prices=lambda *args, **kwargs: prices,
-    )
-
-
-def test_更新保留历史接受近期修订并按最后完整日期标注(tmp_path, monkeypatch):
-    data = inputs()
-    monkeypatch.setitem(sys.modules, 'stock_data', backend(data))
-    path = tmp_path / 'etf_oi.json'
-    old = {'records': [{'date': '2023-01-03', 'ratio_pct': 0.01}], 'as_of': '2023-01-03'}
-    path.write_text(json.dumps(old))
-    data[1][CODES[0]][0]['unit_nav'] = 3
-    data[0][CODES[0]].pop()
+def test_共享新口径原样保存且不因行情缺失抹掉有效比例(tmp_path, monkeypatch):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    path = tmp_path / FILENAME
+    old_path = tmp_path / 'etf_oi.json'
+    old_path.write_text('{"records":[{"date":"2023-01-03","ratio_pct":0.1}]}')
     result = etf_oi.update_history(path, end_date='2026-10-28')
+    assert calls == [('20240101', '20261028')]
+    assert result['methodology_id'] == METHOD
     assert result['as_of'] == '2026-10-26'
-    assert result['records'][0]['date'] == '2023-01-03'
-    assert result['records'][1]['ratio_pct'] == pytest.approx(0.09)
-    assert result['records'][2]['ratio_pct'] is None
+    assert [r['date'] for r in result['records']] == ['2026-10-26', '2026-10-27']
+    assert result['records'][0]['ratio_pct'] == 1.8
+    assert result['records'][0]['fund_count'] == 25
+    assert result['records'][0]['index_free_float_mv_yuan'] == 2e13
+    assert result['records'][1]['ratio_pct'] is None
     assert json.loads(path.read_text()) == result
+    assert json.loads(old_path.read_text())['records'][0]['date'] == '2023-01-03'
+    assert sorted(p.name for p in tmp_path.iterdir()) == [FILENAME, 'etf_oi.json']
+
+
+@pytest.mark.parametrize('wrong', [None, 'four_etfs_float_mv_v0'])
+def test_旧版本拒绝增量拼接且不修改文件(tmp_path, monkeypatch, wrong):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    path = tmp_path / FILENAME
+    original = json.dumps({'methodology_id': wrong, 'records': [{'date': '2023-01-03', 'ratio_pct': .1}]})
+    path.write_text(original)
+    with pytest.raises(ValueError, match='版本|口径'):
+        etf_oi.update_history(path, end_date='2026-10-28')
+    assert path.read_text() == original
+    assert not calls
+
+
+def test_原始旧历史文件不得被新更新器覆盖(tmp_path, monkeypatch):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    path = tmp_path / 'etf_oi.json'
+    with pytest.raises(ValueError, match='旧|口径'):
+        etf_oi.update_history(path, end_date='2026-10-28')
+    assert not path.exists()
+    assert not calls
+
+
+@pytest.mark.parametrize('failure', ['empty', 'incomplete', 'wrong_version', 'network'])
+def test_更新失败保留原文件并无临时残留(tmp_path, monkeypatch, failure):
+    data = payload()
+    if failure == 'empty':
+        data['records'] = []
+    elif failure == 'incomplete':
+        for row in data['records']:
+            row['ratio_pct'] = None
+    elif failure == 'wrong_version':
+        data['methodology_id'] = 'legacy'
+    backend(monkeypatch, data, [])
+    if failure == 'network':
+        def failed(*args):
+            raise OSError('upstream')
+        sys.modules['stock_data'].fetch_csi300_etf_position_history = failed
+    path = tmp_path / FILENAME
+    original = json.dumps(payload())
+    path.write_text(original)
+    with pytest.raises((ValueError, OSError)):
+        etf_oi.update_history(path, end_date='2026-10-28')
+    assert path.read_text() == original
     assert list(tmp_path.iterdir()) == [path]
 
 
-def test_空响应失败时不覆盖已存历史(tmp_path, monkeypatch):
-    data = inputs()
-    data[0][CODES[1]].clear()
-    monkeypatch.setitem(sys.modules, 'stock_data', backend(data))
-    path = tmp_path / 'etf_oi.json'
-    original = '{"records": [{"date": "2026-10-23", "ratio_pct": 0.1}]}'
-    path.write_text(original)
-    with pytest.raises(ValueError, match='空|无数据'):
-        etf_oi.update_history(path, end_date='2026-10-28')
-    assert path.read_text() == original
-
-
-def test_增量请求使用45日重叠窗口(tmp_path, monkeypatch):
+def test_近期45日重拉接受修订且不跨缺口保留陈旧比例(tmp_path, monkeypatch):
+    data = payload()
+    original = copy.deepcopy(data)
+    original['records'].insert(0, dict(data['records'][0], date='2024-01-02', ratio_pct=.3))
+    original['records'][2]['ratio_pct'] = 1.9
+    data['records'][0]['ratio_pct'] = 1.7
     calls = []
-    fake = backend(inputs())
-    def shares(code, start, end):
-        calls.append((start, end))
-        return inputs()[0][code]
-    fake.fetch_etf_share_history = shares
-    monkeypatch.setitem(sys.modules, 'stock_data', fake)
-    path = tmp_path / 'etf_oi.json'
-    path.write_text(json.dumps({'records': [{'date': '2026-10-26', 'ratio_pct': 1,
-                                           'index_pre_close': 3990}]}))
-    etf_oi.update_history(path, end_date='2026-10-28')
-    assert set(calls) == {('20260911', '20261028')}
+    backend(monkeypatch, data, calls)
+    path = tmp_path / FILENAME
+    path.write_text(json.dumps(original))
+    result = etf_oi.update_history(path, end_date='2026-10-28')
+    assert calls == [('20260912', '20261028')]
+    assert result['records'][0]['ratio_pct'] == .3
+    assert result['records'][1]['ratio_pct'] == 1.7
+    assert result['records'][2]['ratio_pct'] is None
+    assert result['as_of'] == '2026-10-26'

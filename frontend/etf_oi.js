@@ -23,12 +23,13 @@
     ticks: { color, maxTicksLimit: 6 },
   });
 
-  fetch('data/etf_oi.json', { cache: 'no-cache' })
+  fetch('data/csi300_etf_position.json', { cache: 'no-cache' })
     .then(response => {
       if (!response.ok) throw new Error('unavailable');
       return response.json();
     })
     .then(data => {
+      if (data.methodology_id !== 'csi300_etf_free_float_v1') throw new Error('methodology');
       const all = (Array.isArray(data.records) ? data.records : [])
         .filter(row => row && typeof row.date === 'string')
         .sort((a, b) => a.date.localeCompare(b.date));
@@ -40,13 +41,15 @@
       text('etf-oi-date', `最新完整数据：${latest.date} · 最近 ${records.length} 个交易日`);
       text('etf-oi-ratio', `${format(latest.ratio_pct, 4)}%`);
       text('etf-oi-assets', format(finite(latest.etf_assets_yuan) === null ? null : latest.etf_assets_yuan / 1e8));
-      text('etf-oi-market-value', format(finite(latest.index_float_mv_yuan) === null ? null : latest.index_float_mv_yuan / 1e12));
+      text('etf-oi-market-value', format(finite(latest.index_free_float_mv_yuan) === null ? null : latest.index_free_float_mv_yuan / 1e12));
       text('etf-oi-close', format(latest.index_close));
+      text('etf-oi-funds', `当日样本：${format(latest.fund_count, 0)} 只普通沪深300 ETF；按实际上市/退市日期纳入。`);
       const notices = [];
       if (all[all.length - 1].date > latest.date) {
         notices.push(`最新交易日 ${all[all.length - 1].date} 数据尚未齐全，当前占比截至 ${latest.date}。`);
       }
       if (gaps) notices.push(`图示区间有 ${gaps} 个交易日数据未齐，缺口处不连线。`);
+      if (!records.some(row => finite(row.volume_shares) !== null)) notices.push('成交量数据暂缺。');
       status.textContent = notices.join(' ');
       content.hidden = false;
 
@@ -60,7 +63,7 @@
           type: 'line',
           data: { labels, datasets: [
             {
-              label: 'ETF规模占比', yAxisID: 'ratio',
+              label: '配置强度代理', yAxisID: 'ratio',
               data: records.map(row => finite(row.ratio_pct)),
               borderColor: '#fbbf24', backgroundColor: '#fbbf24',
               borderWidth: 2, pointRadius: 1.5, pointHoverRadius: 4, spanGaps: false,
@@ -77,7 +80,7 @@
             plugins: {
               legend: { labels: { color: '#cbd5e1', boxWidth: 12 } },
               tooltip: { callbacks: { label: ctx => ctx.dataset.yAxisID === 'ratio'
-                ? `ETF规模占比：${format(ctx.parsed.y, 4)}%`
+                ? `配置强度代理：${format(ctx.parsed.y, 4)}%`
                 : `沪深300：${format(ctx.parsed.y)} 点` } },
             },
             scales: {

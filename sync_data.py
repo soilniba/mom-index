@@ -8,15 +8,17 @@ import sys
 import tempfile
 from pathlib import Path
 
+from analyzer.etf_oi import HISTORY_FILENAME
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
 FRONTEND_DATA_DIR = os.path.join(HERE, "frontend", "data")
-FILES = ["dashboard_data.json", "history.json", "xhs_posts.json", "etf_oi.json"]
+FILES = ["dashboard_data.json", "history.json", "xhs_posts.json", HISTORY_FILENAME]
 
 
 def publish_etf_oi(data_dir, frontend_data_dir=None):
-    """原子发布ETF历史；读取或替换失败时保留网页旧文件。"""
-    source = Path(data_dir) / 'etf_oi.json'
+    """原子发布新口径独立历史；读取或替换失败时保留网页旧文件。"""
+    source = Path(data_dir) / HISTORY_FILENAME
     if not source.is_file():
         return False
     target = Path(frontend_data_dir or FRONTEND_DATA_DIR) / source.name
@@ -42,7 +44,7 @@ def sync():
         src = os.path.join(DATA_DIR, fname)
         dst = os.path.join(FRONTEND_DATA_DIR, fname)
         if os.path.exists(src):
-            if fname == 'etf_oi.json':
+            if fname == HISTORY_FILENAME:
                 publish_etf_oi(DATA_DIR)
             else:
                 shutil.copy2(src, dst)

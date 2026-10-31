@@ -1,4 +1,4 @@
-"""沪深300 ETF 规模占比双轴折线和成交量图，PNG 供飞书使用。"""
+"""共享配置强度代理与沪深300点位双轴折线、成交量图，缺口不连线。"""
 
 import io
 
@@ -39,10 +39,10 @@ def chart_png(records: list) -> bytes:
     yp = lambda v: bottom - (v - plow) / (phigh - plow) * (bottom - top)
     complete = [r for r in records if r.get('ratio_pct') is not None]
     last = complete[-1]
-    draw.text((80, 40), '头部沪深300 ETF 规模占比', font=title, fill=CHART_TEXT)
+    draw.text((80, 40), '沪深300 ETF配置强度代理', font=title, fill=CHART_TEXT)
     draw.text((80, 103), f"截至 {last['date']}   ·   占比 {last['ratio_pct']:.4f}%"
-              f"   ·   最近 {n} 个交易日", font=font, fill=CHART_TEXT)
-    draw.text((left, 160), '● ETF规模占比（左轴，%）', font=font, fill=RATIO_COLOR)
+              f"   ·   {last['fund_count']}只普通ETF   ·   最近 {n} 个交易日", font=font, fill=CHART_TEXT)
+    draw.text((left, 160), '● 配置强度代理（左轴，%）', font=font, fill=RATIO_COLOR)
     draw.text((770, 160), '● 沪深300（右轴，点）', font=font, fill=PRICE_COLOR)
     for i in range(6):
         yy = bottom - (bottom - top) * i / 5
@@ -90,7 +90,7 @@ def chart_png(records: list) -> bytes:
     ticks = sorted(set(round(i * (n-1) / 5) for i in range(6)))
     for i in ticks:
         draw.text((x(i), vbottom+16), records[i]['date'], font=small, fill=CHART_TICK, anchor='mt')
-    draw.text((80, 1050), '510300 · 510310 · 510330 · 159919   |   份额 × 单位净值 / 指数流通市值   |   stock_data',
+    draw.text((80, 1050), '全部普通ETF / 沪深300自由流通市值  |  代理指标，不代表国家队实际持仓  |  stock_data',
               font=small, fill=CHART_TICK)
     buffer = io.BytesIO()
     image.save(buffer, 'PNG')
