@@ -62,9 +62,12 @@ location /mom/ {
 
 页面数据来自 `frontend/data/dashboard_data.json`（本地生成，gitignore 不入库）。**每日自动刷新**：`mom-index-collect.timer` 每天 15:30 UTC（北京 23:30）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。周末也会跑（股吧无新帖，结果与周五相同，同日记录被覆盖，幂等无害）。
 
-通知阶段先发完整宝妈报告，再通过 `stock_data` 更新并发送沪深300ETF规模占比；运行环境需安装本机共享库及其 pandas/Tushare 依赖。`TUSHARE_TOKEN` 继承 systemd user 环境，只在进程中读取；本次没有写入或更改凭据文件。新增指标的历史、缺失日期说明与单独预览方式见 [运行记录](etf-oi/operations.md)。
+通知阶段先发完整宝妈报告，再通过 `stock_data` 更新并发送沪深300ETF配置强度代理；运行环境需安装本机共享库及其 pandas/Tushare 依赖。`TUSHARE_TOKEN` 继承 systemd user 环境，只在进程中读取；本次没有写入或更改凭据文件。新增指标的历史、缺失日期说明与单独预览方式见 [运行记录](etf-oi/operations.md)。
 
-网页底部的ETF双曲线与量柱独立读取 `frontend/data/etf_oi.json`，与飞书共用同一计算结果。新指标更新/独立发送后自动原子同步，`sync_data.py` 也支持手动发布；静态网页与已有本地Chart.js无需重启服务。
+网页底部的ETF双曲线与量柱独立读取 `frontend/data/csi300_etf_position.json`，与飞书共用同一计算结果，旧 `etf_oi.json` 保留为旧口径。新指标更新/独立发送后自动原子同步，`sync_data.py` 也支持手动发布。
+
+用户已授权合并上线并重启相关服务。本次先合入共享库、发布新JSON，再切换前端并通过systemd重启
+`mom-index-web.service`；采集timer继续原计划，手动验收仅使用更新/预览入口。
 
 **自动采集含股吧 + 小红书（Playwright 免费采集）**：定时任务直接跑 `python pipeline.py`。
 小红书通过 `~/.config/mom-index/env` 的 XHS_COOKIE 登录态免费采集（原理见 [xhs-cookie.md](xhs-cookie.md)），

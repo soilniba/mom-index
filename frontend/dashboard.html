@@ -187,21 +187,21 @@ body {
   </div>
 
   <section class="chart-box etf-section" id="etf-oi" aria-labelledby="etf-oi-title">
-    <h2 id="etf-oi-title">沪深300 ETF 规模占比</h2>
+    <h2 id="etf-oi-title">沪深300 ETF配置强度代理</h2>
     <p class="etf-caption" id="etf-oi-date"></p>
     <p class="etf-status" id="etf-oi-status" role="status">数据加载中…</p>
     <div id="etf-oi-content" hidden>
       <dl class="etf-stats">
-        <div><dt>四只 ETF 规模占比</dt><dd class="etf-ratio" id="etf-oi-ratio"></dd></div>
-        <div><dt>四只合计规模</dt><dd><span id="etf-oi-assets"></span> <small>亿元</small></dd></div>
-        <div><dt>沪深300流通市值</dt><dd><span id="etf-oi-market-value"></span> <small>万亿元</small></dd></div>
+        <div><dt>ETF配置强度代理</dt><dd class="etf-ratio" id="etf-oi-ratio"></dd></div>
+        <div><dt>普通ETF合计规模</dt><dd><span id="etf-oi-assets"></span> <small>亿元</small></dd></div>
+        <div><dt>沪深300自由流通市值</dt><dd><span id="etf-oi-market-value"></span> <small>万亿元</small></dd></div>
         <div><dt>沪深300收盘</dt><dd><span id="etf-oi-close"></span> <small>点</small></dd></div>
       </dl>
       <div class="etf-plot"><canvas id="chart-etf-oi" role="img" aria-label="ETF规模占比与沪深300点位双轴走势图"></canvas></div>
       <p class="etf-caption">沪深300成分股成交量（亿股） · 涨红 / 跌绿 / 平盘或缺昨收灰</p>
       <div class="etf-plot etf-volume-plot"><canvas id="chart-etf-volume" role="img" aria-label="沪深300成交量柱状图"></canvas></div>
-      <p class="etf-note">固定样本：510300（华泰柏瑞） · 510310（易方达） · 510330（华夏） · 159919（嘉实）</p>
-      <p class="etf-note">口径：同日份额 × 单位净值 / 沪深300普通流通市值；反映 ETF 规模，不代表国家队实际持仓。</p>
+      <p class="etf-note" id="etf-oi-funds"></p>
+      <p class="etf-note">口径：全部普通沪深300ETF同日份额 × 单位净值 / 当日有效成分自由流通市值；这是配置强度代理，不代表国家队实际持仓。分红、调样及其他投资者行为也会影响比例。</p>
     </div>
   </section>
 </div>
