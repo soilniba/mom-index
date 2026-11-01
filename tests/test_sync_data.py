@@ -11,7 +11,7 @@ import sync_data
 def test_发布ETF历史供网页读取(tmp_path):
     data, web = tmp_path / 'data', tmp_path / 'web'
     data.mkdir()
-    content = '{"methodology_id":"csi300_etf_free_float_v1","as_of":"2026-10-28","records":[]}'
+    content = '{"methodology_id":"csi300_etf_free_float_v2","as_of":"2026-10-28","records":[]}'
     (data / 'csi300_etf_position.json').write_text(content)
     assert sync_data.publish_etf_oi(data, web)
     assert (web / 'csi300_etf_position.json').read_text() == content

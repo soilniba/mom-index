@@ -34,8 +34,11 @@ def build_card(data, update_failed=False):
         (f"沪深300收盘 **{row['index_close']:,.2f} 点**" if row.get('index_close') is not None
          else '沪深300收盘点位暂缺'), '',
         '口径：全部普通沪深300ETF同日份额 × 单位净值 / 当日有效成分自由流通市值。',
+        '停牌成分沿用最近有效估值，已核对可识别公司行动。',
         '这是配置强度代理，不代表国家队实际持仓；分红、调样及其他投资者行为也会影响比例。',
     ]
+    if row.get('carried_member_count', 0):
+        lines.append(f"沿用估值成分：{row['carried_member_count']} 只，占分母 {row['carried_weight_pct']:.4f}%。")
     if records and records[-1]['date'] > row['date']:
         lines.append(f"⚠️ 行情已至 {records[-1]['date']}，当日规模数据尚未齐全。")
     gaps = sum(r.get('ratio_pct') is None for r in records[-250:])

@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from analyzer import etf_oi
 
 
-METHOD = 'csi300_etf_free_float_v1'
+METHOD = 'csi300_etf_free_float_v2'
 FILENAME = 'csi300_etf_position.json'
 
 
@@ -23,10 +23,12 @@ def payload():
             {'date': '2026-10-26', 'ratio_pct': 1.8, 'etf_assets_yuan': 3.6e11,
              'index_free_float_mv_yuan': 2e13, 'fund_count': 25, 'index_member_count': 300,
              'membership_effective_from': '20261019', 'missing': [], 'funds': [],
+             'carried_members': [], 'carried_member_count': 0, 'carried_weight_pct': 0.0,
              'index_close': None, 'index_pre_close': None, 'volume_shares': None},
             {'date': '2026-10-27', 'ratio_pct': None, 'etf_assets_yuan': None,
              'index_free_float_mv_yuan': 2e13, 'fund_count': 25, 'index_member_count': 300,
              'membership_effective_from': '20261019', 'missing': ['ETF份额'], 'funds': [],
+             'carried_members': [], 'carried_member_count': 0, 'carried_weight_pct': 0.0,
              'index_close': 4000, 'index_pre_close': 3990, 'volume_shares': 1e8},
         ],
     }
@@ -122,3 +124,103 @@ def test_近期45日重拉接受修订且不跨缺口保留陈旧比例(tmp_path
     assert result['records'][1]['ratio_pct'] == 1.7
     assert result['records'][2]['ratio_pct'] is None
     assert result['as_of'] == '2026-10-26'
+
+
+def migration_payload():
+    data = payload()
+    data['records'].insert(0, dict(data['records'][0], date='2024-01-02', ratio_pct=.4))
+    data['records'][1]['carried_members'] = [{
+        'code': '600001.SH', 'source_date': '20261023', 'price_source': 'last_valid_close',
+        'close': 10.0, 'free_share': 1000.0, 'free_float_mv_yuan': 1e8,
+    }]
+    data['records'][1]['carried_member_count'] = 1
+    data['records'][1]['carried_weight_pct'] = .0005
+    return data
+
+
+def v1_bytes():
+    data = migration_payload()
+    data['methodology_id'] = 'csi300_etf_free_float_v1'
+    data['records'][0]['ratio_pct'] = .3
+    data['records'][1]['ratio_pct'] = None
+    for row in data['records']:
+        for key in ['carried_members', 'carried_member_count', 'carried_weight_pct']:
+            row.pop(key)
+    return json.dumps(data, ensure_ascii=False, indent=1).encode()
+
+
+@pytest.mark.parametrize('prior_backup', [False, True])
+def test_v1从2024完整重算不拼接且逐字节保留备份(tmp_path, monkeypatch, prior_backup):
+    data = migration_payload()
+    calls = []
+    backend(monkeypatch, data, calls)
+    path = tmp_path / FILENAME
+    original = v1_bytes()
+    path.write_bytes(original)
+    backup = tmp_path / 'csi300_etf_position.v1.json'
+    if prior_backup:
+        backup.write_bytes(original)
+    result = etf_oi.update_history(path, end_date='2026-10-28')
+    assert calls == [('20240101', '20261028')]
+    assert result['methodology_id'] == 'csi300_etf_free_float_v2'
+    assert result['records'] == data['records']
+    assert result['records'][0]['ratio_pct'] == .4
+    assert result['records'][1]['ratio_pct'] == 1.8
+    assert result['records'][1]['missing'] == []
+    assert result['records'][1]['carried_member_count'] == 1
+    assert backup.read_bytes() == original
+    assert json.loads(path.read_bytes()) == result
+    assert len(list(tmp_path.iterdir())) == 2
+
+
+@pytest.mark.parametrize('failure', ['network', 'wrong_version', 'incomplete', 'truncated'])
+def test_v1迁移请求失败或不完整保持原文件且不新建备份(tmp_path, monkeypatch, failure):
+    data = migration_payload()
+    if failure == 'wrong_version':
+        data['methodology_id'] = 'csi300_etf_free_float_v1'
+    elif failure == 'incomplete':
+        for row in data['records']:
+            row['ratio_pct'] = None
+    elif failure == 'truncated':
+        data['records'].pop(0)
+    backend(monkeypatch, data, [])
+    if failure == 'network':
+        def failed(*args):
+            raise OSError('upstream')
+        sys.modules['stock_data'].fetch_csi300_etf_position_history = failed
+    path = tmp_path / FILENAME
+    original = v1_bytes()
+    path.write_bytes(original)
+    with pytest.raises((ValueError, OSError)):
+        etf_oi.update_history(path, end_date='2026-10-28')
+    assert path.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_已有不同v1备份时拒绝覆盖两个历史文件(tmp_path, monkeypatch):
+    backend(monkeypatch, migration_payload(), [])
+    path = tmp_path / FILENAME
+    original = v1_bytes()
+    path.write_bytes(original)
+    backup = tmp_path / 'csi300_etf_position.v1.json'
+    backup.write_bytes(b'prior archive')
+    with pytest.raises(ValueError, match='备份'):
+        etf_oi.update_history(path, end_date='2026-10-28')
+    assert path.read_bytes() == original
+    assert backup.read_bytes() == b'prior archive'
+    assert len(list(tmp_path.iterdir())) == 2
+
+
+def test_迁移替换失败保留当前v1和完整备份且清理临时文件(tmp_path, monkeypatch):
+    backend(monkeypatch, migration_payload(), [])
+    path = tmp_path / FILENAME
+    original = v1_bytes()
+    path.write_bytes(original)
+    def fail_replace(*args):
+        raise OSError('disk')
+    monkeypatch.setattr(etf_oi.os, 'replace', fail_replace)
+    with pytest.raises(OSError):
+        etf_oi.update_history(path, end_date='2026-10-28')
+    assert path.read_bytes() == original
+    assert (tmp_path / 'csi300_etf_position.v1.json').read_bytes() == original
+    assert len(list(tmp_path.iterdir())) == 2
