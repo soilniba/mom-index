@@ -3,12 +3,13 @@
 pipeline.py 已内置自动同步，此脚本用于手动修复不一致。
 """
 import os
+import json
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
-from analyzer.etf_oi import HISTORY_FILENAME
+from analyzer.etf_oi import HISTORY_FILENAME, METHODOLOGY_ID
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
@@ -17,18 +18,21 @@ FILES = ["dashboard_data.json", "history.json", "xhs_posts.json", HISTORY_FILENA
 
 
 def publish_etf_oi(data_dir, frontend_data_dir=None):
-    """原子发布新口径独立历史；读取或替换失败时保留网页旧文件。"""
+    """单次读取并核对v2口径后原子发布；版本或写入失败保留网页旧文件。"""
     source = Path(data_dir) / HISTORY_FILENAME
     if not source.is_file():
         return False
+    payload = source.read_bytes()
+    data = json.loads(payload)
+    if not isinstance(data, dict) or data.get('methodology_id') != METHODOLOGY_ID:
+        raise ValueError('指标口径版本不匹配，禁止发布旧历史')
     target = Path(frontend_data_dir or FRONTEND_DATA_DIR) / source.name
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(dir=target.parent, suffix='.tmp', delete=False) as output:
             temporary = output.name
-            with source.open('rb') as original:
-                shutil.copyfileobj(original, output)
+            output.write(payload)
         os.replace(temporary, target)
     finally:
         if temporary and os.path.exists(temporary):

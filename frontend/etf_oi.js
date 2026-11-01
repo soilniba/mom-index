@@ -48,7 +48,15 @@
       if (latest.carried_member_count > 0) {
         valuationNote += ` 沿用估值成分：${format(latest.carried_member_count, 0)} 只，占分母 ${format(latest.carried_weight_pct, 4)}%。`;
       }
-      text('etf-oi-valuation', valuationNote);
+      // 旧缓存页面没有这个新增节点，补建后仍能显示完整的 v2 说明。
+      let valuation = document.getElementById('etf-oi-valuation');
+      if (!valuation) {
+        valuation = document.createElement('p');
+        valuation.id = 'etf-oi-valuation';
+        valuation.className = 'etf-note';
+        document.getElementById('etf-oi-funds').after(valuation);
+      }
+      valuation.textContent = valuationNote;
       const notices = [];
       if (all[all.length - 1].date > latest.date) {
         notices.push(`最新交易日 ${all[all.length - 1].date} 数据尚未齐全，当前占比截至 ${latest.date}。`);

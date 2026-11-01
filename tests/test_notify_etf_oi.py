@@ -161,3 +161,74 @@ def test_v1缓存不冒充停牌修订后的v2卡片():
     card = report.build_card({'methodology_id': 'csi300_etf_free_float_v1', 'records': records()})
     assert '暂无完整数据' in card
     assert '0.1000%' not in card
+
+
+@pytest.mark.parametrize('version', ['csi300_etf_free_float_v1', None])
+@pytest.mark.parametrize('mode', ['preview', 'update_only'])
+def test_CLI拒绝无刷新旧口径且不覆盖网页v2(tmp_path, monkeypatch, version, mode):
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': records(), 'as_of': '2026-10-23'}
+    snapshot = dict(current)
+    if version is None:
+        snapshot.pop('methodology_id')
+    else:
+        snapshot['methodology_id'] = version
+    (tmp_path / 'csi300_etf_position.json').write_text(json.dumps(snapshot))
+    web = tmp_path / 'web'
+    web.mkdir()
+    published = web / 'csi300_etf_position.json'
+    original = json.dumps(current)
+    published.write_text(original)
+    preview = tmp_path / 'preview.png'
+    flags = ['--preview', str(preview)] if mode == 'preview' else ['--update-only']
+    monkeypatch.setattr(sys, 'argv', ['notify_etf_oi.py', str(tmp_path), '--no-refresh', *flags])
+    with pytest.raises(ValueError, match='版本|口径'):
+        report.main()
+    assert published.read_text() == original
+    assert not preview.exists()
+
+
+def test_CLI无刷新v2可正常预览发布且不更新或发送(tmp_path, monkeypatch):
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': records(), 'as_of': '2026-10-23'}
+    original = json.dumps(current)
+    (tmp_path / 'csi300_etf_position.json').write_text(original)
+    preview = tmp_path / 'preview.png'
+    def forbidden(*args, **kwargs):
+        raise AssertionError('禁止更新或发送')
+    monkeypatch.setattr(report, 'update_history', forbidden)
+    monkeypatch.setattr(report, '_upload_image', forbidden)
+    monkeypatch.setattr(report, '_send_markdown', forbidden)
+    monkeypatch.setattr(sys, 'argv', ['notify_etf_oi.py', str(tmp_path), '--no-refresh', '--preview', str(preview)])
+    assert report.main() == 0
+    assert Image.open(preview).size == (1600, 1100)
+    assert (tmp_path / 'web' / 'csi300_etf_position.json').read_text() == original
+
+
+@pytest.mark.parametrize('version', ['csi300_etf_free_float_v1', None])
+def test_旧口径通知不发布不上传不发送(tmp_path, monkeypatch, version):
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': records(), 'as_of': '2026-10-23'}
+    snapshot = dict(current)
+    if version is None:
+        snapshot.pop('methodology_id')
+    else:
+        snapshot['methodology_id'] = version
+    (tmp_path / 'csi300_etf_position.json').write_text(json.dumps(snapshot))
+    web = tmp_path / 'web'
+    web.mkdir()
+    published = web / 'csi300_etf_position.json'
+    original = json.dumps(current)
+    published.write_text(original)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('旧口径不得上传或发送')
+    monkeypatch.setattr(report, '_upload_image', forbidden)
+    monkeypatch.setattr(report, '_send_markdown', forbidden)
+    assert report.send_etf_oi_report(tmp_path, refresh=False) is False
+    assert published.read_text() == original
+
+
+def test_合法v2空记录仍可发送既有数据不足告警(tmp_path, monkeypatch):
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': []}
+    (tmp_path / 'csi300_etf_position.json').write_text(json.dumps(current))
+    sent = []
+    monkeypatch.setattr(report, '_send_markdown', lambda card, summary, **kw: sent.append(card) or True)
+    assert report.send_etf_oi_report(tmp_path, refresh=False) is False
+    assert len(sent) == 1 and '暂无完整数据' in sent[0]
