@@ -15,14 +15,14 @@
        → location /mom/ → proxy_pass http://172.17.0.1:8765/
        → frps (服务器, 8765)
        → frpc (本机 minipc, 用户级)
-       → 本机 python http.server 8765 (frontend/)
+       → 本机 scripts/serve_frontend.py 8765 (frontend/)
 ```
 
 ## 本机组件（minipc）
 
 | 组件 | 配置 | 说明 |
 |------|------|------|
-| mom-index-web.service | `~/.config/systemd/user/mom-index-web.service` | python3 http.server，`WorkingDirectory=frontend/`，端口 8765 |
+| mom-index-web.service | `~/.config/systemd/user/mom-index-web.service` | 标准库静态服务，`WorkingDirectory=frontend/`，端口 8765 |
 | mom-index-frpc.service | `~/.config/systemd/user/mom-index-frpc.service` | 用户级 frpc，配置 `~/.config/mom-index/frpc.toml`（从系统 frpc 模板派生，仅含 mom-index 代理） |
 | mom-index-collect.timer / .service | `~/.config/systemd/user/` | 每日自动采集：每天 15:30 UTC（北京 23:30，覆盖全天帖子），`Persistent=true` 错过补跑 |
 | frpc 代理 | name=`mom-index-web`，local 127.0.0.1:8765 → remote 8765 | 与 cookie-server/renming 同模式 |
@@ -36,6 +36,12 @@ journalctl --user -u mom-index-web -f
 ```
 
 两个服务均 enable，且用户 Linger=yes，重启后自启。
+
+web 的 `ExecStart=/usr/bin/python3 /home/wangr/projects/mom-index/scripts/serve_frontend.py`。
+包装标准库 http.server，所有响应（包括304）设置 `Cache-Control: no-cache`，
+保留条件请求；HTML 引用带版本的 ETF 脚本，避免返回用户加载旧脚本。
+修改启动入口后执行 `systemctl --user daemon-reload` 再重启 web。
+版本兼容复现和接入审计见[网页缓存修复](etf-oi/web-cache.md)。
 
 ## 服务器组件（sh.gjol.vip）
 

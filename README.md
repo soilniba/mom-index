@@ -92,6 +92,7 @@ mom-index/
 - [每日飞书推送设计与运维](docs/feishu-daily.md)
 - [沪深300 ETF配置强度代理：调研与设计](docs/etf-oi/README.md) / [停牌估值与v2迁移](docs/etf-oi/suspension-valuation.md)
 - [沪深300 ETF 网页底部同步展示](docs/etf-oi/web.md)
+- [ETF 网页版本兼容与缓存修复](docs/etf-oi/web-cache.md)
 - [LLM 分类器](docs/llm-classifier.md)
 - [部署](docs/deploy.md)
 - [小红书 Cookie](docs/xhs-cookie.md)
@@ -106,7 +107,7 @@ cd ~/Desktop/mom-index
 python pipeline.py
 
 # 启动前端看板（默认 8765 端口）
-cd frontend && python -m http.server 8765
+cd frontend && python ../scripts/serve_frontend.py
 
 # 浏览器打开
 # http://localhost:8765/dashboard.html

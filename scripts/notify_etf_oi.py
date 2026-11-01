@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""更新共享配置强度代理 → 原子发布网页 → 预览或发送独立图卡。"""
+"""更新/读取配置强度代理 → 校验v2 → 原子发布、预览或发送；无缓存时发送失败告警。"""
 
 import argparse
 from datetime import datetime
@@ -63,8 +63,12 @@ def send_etf_oi_report(data_dir, refresh=True) -> bool:
         try:
             data = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
-            data = {}
-    valid = data.get('methodology_id') == METHODOLOGY_ID and any(
+            _send_markdown(build_card({}, True), '沪深300 ETF配置强度代理')
+            return False
+    if not isinstance(data, dict) or data.get('methodology_id') != METHODOLOGY_ID:
+        print('[etf_oi] 指标口径版本不匹配，跳过发布与通知', file=sys.stderr)
+        return False
+    valid = any(
         r.get('ratio_pct') is not None for r in data.get('records', []))
     try:
         publish_etf_oi(data_dir)
@@ -97,6 +101,8 @@ def main():
         return 0 if send_etf_oi_report(args.data_dir, refresh=not args.no_refresh) else 1
     path = Path(args.data_dir) / HISTORY_FILENAME
     data = (json.loads(path.read_text(encoding='utf-8')) if args.no_refresh else update_history(path))
+    if not isinstance(data, dict) or data.get('methodology_id') != METHODOLOGY_ID:
+        raise ValueError('指标口径版本不匹配，禁止预览或发布旧历史')
     publish_etf_oi(args.data_dir)
     if args.preview:
         png = chart_png(data['records'])
