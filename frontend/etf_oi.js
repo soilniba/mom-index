@@ -29,7 +29,7 @@
       return response.json();
     })
     .then(data => {
-      if (data.methodology_id !== 'csi300_etf_free_float_v1') throw new Error('methodology');
+      if (data.methodology_id !== 'csi300_etf_free_float_v2') throw new Error('methodology');
       const all = (Array.isArray(data.records) ? data.records : [])
         .filter(row => row && typeof row.date === 'string')
         .sort((a, b) => a.date.localeCompare(b.date));
@@ -44,6 +44,11 @@
       text('etf-oi-market-value', format(finite(latest.index_free_float_mv_yuan) === null ? null : latest.index_free_float_mv_yuan / 1e12));
       text('etf-oi-close', format(latest.index_close));
       text('etf-oi-funds', `当日样本：${format(latest.fund_count, 0)} 只普通沪深300 ETF；按实际上市/退市日期纳入。`);
+      let valuationNote = '停牌成分沿用最近有效估值，已核对可识别公司行动。';
+      if (latest.carried_member_count > 0) {
+        valuationNote += ` 沿用估值成分：${format(latest.carried_member_count, 0)} 只，占分母 ${format(latest.carried_weight_pct, 4)}%。`;
+      }
+      text('etf-oi-valuation', valuationNote);
       const notices = [];
       if (all[all.length - 1].date > latest.date) {
         notices.push(`最新交易日 ${all[all.length - 1].date} 数据尚未齐全，当前占比截至 ${latest.date}。`);
