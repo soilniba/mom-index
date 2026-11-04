@@ -122,3 +122,66 @@ def test_缓存修复仍拒绝旧口径数据(browser, web):
         assert '暂不可用' in page.locator('#etf-oi-status').inner_text()
     finally:
         page.close()
+
+
+@pytest.mark.parametrize('missing,reasons', [
+    (['reference_outside_coverage'], ['ETF参考资料覆盖不足']),
+    (['membership_outside_coverage'], ['指数成分资料覆盖不足']),
+    (['daily_basic_snapshot_missing'], ['成分估值快照缺失']),
+    (['510300.SH:share_or_nav'], ['ETF份额或净值缺失']),
+    (['reference_outside_coverage', 'membership_outside_coverage',
+      'daily_basic_snapshot_missing', '510300.SH:share_or_nav'],
+     ['ETF参考资料覆盖不足', '指数成分资料覆盖不足', '成分估值快照缺失', 'ETF份额或净值缺失']),
+    (['reference_outside_coverage', '000001.SZ:close_or_free_share'],
+     ['ETF参考资料覆盖不足', '其他数据尚未齐全']),
+    (['000001.SZ:close_or_free_share'], ['数据尚未齐全']),
+    ([], ['数据尚未齐全']),
+    (None, ['数据尚未齐全']),
+])
+def test_网页显示尾部真实缺失原因并保留截至日和断线(browser, web, missing, reasons):
+    url, _, target, payload = web
+    pending = dict(payload['records'][0], date='2026-11-04', ratio_pct=None)
+    if missing is None:
+        pending.pop('missing')
+    else:
+        pending['missing'] = missing
+    payload['records'].append(pending)
+    target.write_text(json.dumps(payload))
+    page = browser.new_page()
+    try:
+        page.goto(f'{url}/dashboard.html')
+        wait_for_result(page)
+        notice = page.locator('#etf-oi-status').inner_text()
+        for reason in reasons:
+            assert reason in notice
+        assert '2026-11-04' in notice
+        assert '2026-10-30' in page.locator('#etf-oi-date').inner_text()
+        assert page.locator('#etf-oi-ratio').inner_text() == '1.8673%'
+        assert page.evaluate("Chart.getChart('chart-etf-oi').data.datasets[0].data") == [1.8673, None]
+        assert page.evaluate("Chart.getChart('chart-etf-oi').data.datasets[0].spanGaps") is False
+        assert 'reference_outside_coverage' not in notice and 'share_or_nav' not in notice
+        if missing == ['reference_outside_coverage']:
+            assert '数据未齐' not in notice and '数据尚未齐全' not in notice
+            assert 'ETF份额或净值缺失' not in notice
+    finally:
+        page.close()
+
+
+def test_网页汇总截至日之后各交易日真实缺失原因(browser, web):
+    url, _, target, payload = web
+    payload['records'].extend([
+        dict(payload['records'][0], date='2026-11-03', ratio_pct=None,
+             missing=['reference_outside_coverage']),
+        dict(payload['records'][0], date='2026-11-04', ratio_pct=None,
+             missing=['510300.SH:share_or_nav']),
+    ])
+    target.write_text(json.dumps(payload))
+    page = browser.new_page()
+    try:
+        page.goto(f'{url}/dashboard.html')
+        wait_for_result(page)
+        notice = page.locator('#etf-oi-status').inner_text()
+        assert 'ETF参考资料覆盖不足' in notice and 'ETF份额或净值缺失' in notice
+        assert '2026-10-30' in page.locator('#etf-oi-date').inner_text()
+    finally:
+        page.close()

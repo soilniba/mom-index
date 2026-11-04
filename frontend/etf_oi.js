@@ -7,6 +7,25 @@
     ? value.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
     : '—';
   const text = (id, value) => { document.getElementById(id).textContent = value; };
+  const missingReasons = records => {
+    const labels = {
+      reference_outside_coverage: 'ETF参考资料覆盖不足',
+      membership_outside_coverage: '指数成分资料覆盖不足',
+      daily_basic_snapshot_missing: '成分估值快照缺失',
+    };
+    const reasons = new Set();
+    let unspecified = false;
+    for (const row of records) {
+      const missing = Array.isArray(row.missing) && row.missing.length ? row.missing : ['unknown'];
+      for (const item of missing) {
+        const reason = labels[item] || (item.endsWith(':share_or_nav') ? 'ETF份额或净值缺失' : null);
+        if (reason) reasons.add(reason);
+        else unspecified = true;
+      }
+    }
+    if (unspecified) reasons.add(reasons.size ? '其他数据尚未齐全' : '数据尚未齐全');
+    return [...reasons].join('、');
+  };
   const xAxis = () => ({
     offset: true,
     grid: { display: false },
@@ -58,10 +77,11 @@
       }
       valuation.textContent = valuationNote;
       const notices = [];
-      if (all[all.length - 1].date > latest.date) {
-        notices.push(`最新交易日 ${all[all.length - 1].date} 数据尚未齐全，当前占比截至 ${latest.date}。`);
+      const pending = all.filter(row => row.date > latest.date);
+      if (pending.length) {
+        notices.push(`截至最新交易日 ${pending[pending.length - 1].date}，更新受阻：${missingReasons(pending)}；当前占比截至 ${latest.date}。`);
       }
-      if (gaps) notices.push(`图示区间有 ${gaps} 个交易日数据未齐，缺口处不连线。`);
+      if (gaps) notices.push(`图示区间有 ${gaps} 个交易日指标缺失，缺口处不连线。`);
       if (!records.some(row => finite(row.volume_shares) !== null)) notices.push('成交量数据暂缺。');
       status.textContent = notices.join(' ');
       content.hidden = false;

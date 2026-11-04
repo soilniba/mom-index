@@ -55,6 +55,7 @@ def test_卡片明确数据日期百分点变化和金额单位():
     assert '沪深300 ETF配置强度代理' in card
     assert '固定样本' not in card
     assert '国家队实际持仓' in card
+    assert '最近检查时间：2026-10-28 20:00' in card
 
 
 def test_更新失败发送带截至日的缓存卡且清理临时图(tmp_path, monkeypatch):
@@ -68,7 +69,7 @@ def test_更新失败发送带截至日的缓存卡且清理临时图(tmp_path, 
         return 'image-test'
     monkeypatch.setattr(report, '_upload_image', upload)
     monkeypatch.setattr(report, '_send_markdown', lambda card, summary, **kw: sent.append((card, kw)) or True)
-    assert report.send_etf_oi_report(tmp_path)
+    assert report.send_etf_oi_report(tmp_path) is False
     assert '更新失败' in sent[0][0] and '2026-10-23' in sent[0][0]
     assert sent[0][1]['image_key'] == 'image-test'
     assert not Path(uploaded[0]).exists()
@@ -232,3 +233,91 @@ def test_合法v2空记录仍可发送既有数据不足告警(tmp_path, monkeyp
     monkeypatch.setattr(report, '_send_markdown', lambda card, summary, **kw: sent.append(card) or True)
     assert report.send_etf_oi_report(tmp_path, refresh=False) is False
     assert len(sent) == 1 and '暂无完整数据' in sent[0]
+
+
+@pytest.mark.parametrize('missing,reasons', [
+    (['reference_outside_coverage'], ['ETF参考资料覆盖不足']),
+    (['membership_outside_coverage'], ['指数成分资料覆盖不足']),
+    (['daily_basic_snapshot_missing'], ['成分估值快照缺失']),
+    (['510300.SH:share_or_nav'], ['ETF份额或净值缺失']),
+    (['reference_outside_coverage', 'membership_outside_coverage',
+      'daily_basic_snapshot_missing', '510300.SH:share_or_nav'],
+     ['ETF参考资料覆盖不足', '指数成分资料覆盖不足', '成分估值快照缺失', 'ETF份额或净值缺失']),
+    (['reference_outside_coverage', '000001.SZ:close_or_free_share'],
+     ['ETF参考资料覆盖不足', '其他数据尚未齐全']),
+    (['000001.SZ:close_or_free_share'], ['数据尚未齐全']),
+    ([], ['数据尚未齐全']),
+    (None, ['数据尚未齐全']),
+])
+def test_卡片如实区分尾部缺失原因且兼容旧记录(missing, reasons):
+    rows = records()
+    pending = dict(rows[-1], date='2026-11-04', ratio_pct=None)
+    if missing is None:
+        pending.pop('missing')
+    else:
+        pending['missing'] = missing
+    rows.append(pending)
+    card = report.build_card({'methodology_id': 'csi300_etf_free_float_v2', 'records': rows})
+    assert '数据截至 **2026-10-23**' in card and '2026-11-04' in card
+    for reason in reasons:
+        assert reason in card
+    assert '当日规模数据尚未齐全' not in card
+    assert 'reference_outside_coverage' not in card and 'share_or_nav' not in card
+    if missing and missing[0] == 'reference_outside_coverage' and len(missing) == 1:
+        assert '数据未齐' not in card and '数据尚未齐全' not in card
+        assert 'ETF份额或净值缺失' not in card
+
+
+def test_卡片汇总截至日之后各交易日真实缺失原因():
+    rows = records()
+    rows.extend([
+        dict(rows[-1], date='2026-11-03', ratio_pct=None, missing=['reference_outside_coverage']),
+        dict(rows[-1], date='2026-11-04', ratio_pct=None, missing=['510300.SH:share_or_nav']),
+    ])
+    card = report.build_card({'methodology_id': 'csi300_etf_free_float_v2', 'records': rows})
+    assert 'ETF参考资料覆盖不足' in card and 'ETF份额或净值缺失' in card
+
+
+@pytest.mark.parametrize('missing,successful', [
+    (['reference_outside_coverage'], False),
+    (['membership_outside_coverage'], False),
+    (['daily_basic_snapshot_missing'], False),
+    (['510300.SH:share_or_nav'], True),
+    ([], True),
+])
+def test_尾部结构缺失发送缓存后仍返回失败(tmp_path, monkeypatch, missing, successful):
+    rows = records()
+    rows.append(dict(rows[-1], date='2026-11-04', ratio_pct=None, missing=missing))
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': rows}
+    (tmp_path / 'csi300_etf_position.json').write_text(json.dumps(current))
+    monkeypatch.setattr(report, 'update_history', lambda *args: current)
+    monkeypatch.setattr(report, 'chart_png', lambda *args: b'')
+    sent = []
+    monkeypatch.setattr(report, '_send_markdown', lambda card, summary, **kw: sent.append(card) or True)
+    assert report.send_etf_oi_report(tmp_path) is successful
+    assert len(sent) == 1 and '0.1000%' in sent[0]
+
+
+def test_历史结构缺口不使已更新的通知失败(tmp_path, monkeypatch):
+    rows = records()
+    rows[2]['missing'] = ['reference_outside_coverage']
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': rows}
+    (tmp_path / 'csi300_etf_position.json').write_text(json.dumps(current))
+    monkeypatch.setattr(report, 'update_history', lambda *args: current)
+    monkeypatch.setattr(report, 'chart_png', lambda *args: b'')
+    monkeypatch.setattr(report, '_send_markdown', lambda *args, **kw: True)
+    assert report.send_etf_oi_report(tmp_path) is True
+
+
+def test_尾部较早的结构缺失不会被最新日份额缺失掩盖(tmp_path, monkeypatch):
+    rows = records()
+    rows.extend([
+        dict(rows[-1], date='2026-11-03', ratio_pct=None, missing=['reference_outside_coverage']),
+        dict(rows[-1], date='2026-11-04', ratio_pct=None, missing=['510300.SH:share_or_nav']),
+    ])
+    current = {'methodology_id': 'csi300_etf_free_float_v2', 'records': rows}
+    (tmp_path / 'csi300_etf_position.json').write_text(json.dumps(current))
+    monkeypatch.setattr(report, 'update_history', lambda *args: current)
+    monkeypatch.setattr(report, 'chart_png', lambda *args: b'')
+    monkeypatch.setattr(report, '_send_markdown', lambda *args, **kw: True)
+    assert report.send_etf_oi_report(tmp_path) is False

@@ -16,6 +16,31 @@ from scripts.notify_daily import _send_markdown, _upload_image
 from sync_data import publish_etf_oi
 
 
+STRUCTURAL_MISSING = {
+    'reference_outside_coverage': 'ETF参考资料覆盖不足',
+    'membership_outside_coverage': '指数成分资料覆盖不足',
+    'daily_basic_snapshot_missing': '成分估值快照缺失',
+}
+
+
+def missing_reasons(records):
+    reasons = []
+    unspecified = False
+    for row in records:
+        for item in row.get('missing') or ['unknown']:
+            reason = STRUCTURAL_MISSING.get(item)
+            if reason is None and item.endswith(':share_or_nav'):
+                reason = 'ETF份额或净值缺失'
+            if reason:
+                if reason not in reasons:
+                    reasons.append(reason)
+            else:
+                unspecified = True
+    if unspecified:
+        reasons.append('其他数据尚未齐全' if reasons else '数据尚未齐全')
+    return '、'.join(reasons)
+
+
 def build_card(data, update_failed=False):
     records = data.get('records', []) if data.get('methodology_id') == METHODOLOGY_ID else []
     complete = [r for r in records if r.get('ratio_pct') is not None]
@@ -39,16 +64,18 @@ def build_card(data, update_failed=False):
     ]
     if row.get('carried_member_count', 0):
         lines.append(f"沿用估值成分：{row['carried_member_count']} 只，占分母 {row['carried_weight_pct']:.4f}%。")
-    if records and records[-1]['date'] > row['date']:
-        lines.append(f"⚠️ 行情已至 {records[-1]['date']}，当日规模数据尚未齐全。")
+    pending = [r for r in records if r['date'] > row['date']]
+    if pending:
+        lines.append(f"⚠️ 截至最新交易日 {pending[-1]['date']}，更新受阻："
+                     f"{missing_reasons(pending)}；当前占比截至 {row['date']}。")
     gaps = sum(r.get('ratio_pct') is None for r in records[-250:])
     if gaps:
-        lines.append(f'图示区间有 {gaps} 个交易日数据未齐，缺口处不连线。')
+        lines.append(f'图示区间有 {gaps} 个交易日指标缺失，缺口处不连线。')
     if update_failed:
         lines.append('⚠️ 本次更新失败，以上为最近成功保存的数据。')
     if data.get('updated_at'):
         updated = datetime.fromisoformat(data['updated_at']).astimezone(ZoneInfo('Asia/Shanghai'))
-        lines.append(f"最近成功更新：{updated:%Y-%m-%d %H:%M}（北京时间）")
+        lines.append(f"最近检查时间：{updated:%Y-%m-%d %H:%M}（北京时间）")
     return '\n'.join(lines)
 
 
@@ -68,8 +95,13 @@ def send_etf_oi_report(data_dir, refresh=True) -> bool:
     if not isinstance(data, dict) or data.get('methodology_id') != METHODOLOGY_ID:
         print('[etf_oi] 指标口径版本不匹配，跳过发布与通知', file=sys.stderr)
         return False
-    valid = any(
-        r.get('ratio_pct') is not None for r in data.get('records', []))
+    records = data.get('records', [])
+    complete = [r for r in records if r.get('ratio_pct') is not None]
+    valid = bool(complete)
+    blocked = valid and any(
+        item in STRUCTURAL_MISSING
+        for r in records if r['date'] > complete[-1]['date']
+        for item in r.get('missing') or [])
     try:
         publish_etf_oi(data_dir)
     except OSError as exc:
@@ -87,7 +119,7 @@ def send_etf_oi_report(data_dir, refresh=True) -> bool:
             print(f'[etf_oi] 图像生成失败：{type(exc).__name__}', file=sys.stderr)
     sent = _send_markdown(build_card(data, failed), '沪深300 ETF配置强度代理',
                           image_key=image_key, image_position='after_title' if image_key else '')
-    return bool(sent and valid)
+    return bool(sent and valid and not failed and not blocked)
 
 
 def main():
