@@ -1,0 +1,8 @@
+[Unit]
+Description=补查收盘后未齐的沪深300 ETF指标
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/mom-index
+ExecStart=%h/venvs/py314/bin/python -m scripts.poll_etf_oi %h/projects/mom-index/data
+TimeoutStartSec=9min

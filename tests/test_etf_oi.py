@@ -224,3 +224,148 @@ def test_迁移替换失败保留当前v1和完整备份且清理临时文件(tm
     assert path.read_bytes() == original
     assert (tmp_path / 'csi300_etf_position.v1.json').read_bytes() == original
     assert len(list(tmp_path.iterdir())) == 2
+
+
+@pytest.mark.parametrize('empty', [False, True])
+def test_待补日期全未齐保留原字节并返回旧数据(tmp_path, monkeypatch, empty):
+    old = payload()
+    old['as_of'] = '2026-10-26'
+    old['records'].append(dict(old['records'][1], date='2026-10-28'))
+    fresh = copy.deepcopy(old)
+    fresh['records'][0]['ratio_pct'] = None
+    fresh['records'][1]['ratio_pct'] = 9.0  # 范围内非待补日的完整值不能触发保存。
+    if empty:
+        fresh['records'] = []
+    calls = []
+    backend(monkeypatch, fresh, calls)
+    path = tmp_path / FILENAME
+    original = json.dumps(old, ensure_ascii=False, indent=1).encode()
+    path.write_bytes(original)
+    result = etf_oi.update_history(path, end_date='2026-10-28',
+                                   pending_dates={'2026-10-26', '2026-10-28'})
+    assert result == old
+    assert path.read_bytes() == original
+    assert calls == [('20261026', '20261028')]
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_待补旧洞跨45日且只合并非连续待补日期的完整值(tmp_path, monkeypatch):
+    old = payload()
+    old['as_of'] = '2026-10-26'
+    old['records'].insert(0, dict(old['records'][1], date='2026-07-01'))
+    fresh = copy.deepcopy(old)
+    fresh['records'][0]['ratio_pct'] = .8
+    fresh['records'][1]['ratio_pct'] = None  # 不可抹去非待补日已有完整记录。
+    fresh['records'][2]['ratio_pct'] = 9.0  # 非待补日原有缺口也不顺便写入。
+    fresh['records'].append(dict(old['records'][2], date='2026-10-28'))
+    calls = []
+    backend(monkeypatch, fresh, calls)
+    path = tmp_path / FILENAME
+    path.write_text(json.dumps(old))
+    result = etf_oi.update_history(path, end_date='2026-10-28',
+                                   pending_dates={'2026-07-01', '2026-10-28'})
+    assert calls == [('20260701', '20261028')]
+    assert result['as_of'] == '2026-10-26'
+    assert [r['ratio_pct'] for r in result['records']] == [.8, 1.8, None]
+    assert result['records'][1:] == old['records'][1:]
+    assert json.loads(path.read_bytes()) == result
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_待补日期按指定最小范围且只透传非零请求间隔(tmp_path, monkeypatch):
+    calls = []
+    def fetch(begin, finish, *, request_interval_seconds):
+        calls.append((begin, finish, request_interval_seconds))
+        data = payload()
+        data['records'] = [dict(data['records'][0], date='2026-10-27')]
+        return data
+    monkeypatch.setitem(sys.modules, 'stock_data', SimpleNamespace(fetch_csi300_etf_position_history=fetch))
+    path = tmp_path / FILENAME
+    path.write_text(json.dumps(payload()))
+    result = etf_oi.update_history(path, end_date='2026-10-28', pending_dates={'2026-10-27'},
+                                   request_interval_seconds=2)
+    assert calls == [('20261027', '20261027', 2)]
+    assert result['as_of'] == '2026-10-27'
+    assert result['records'][1]['ratio_pct'] == 1.8
+
+
+@pytest.mark.parametrize('pending', [set(), '2026-10-27', {'bad'}, {'20261027'},
+                                     {'2023-12-29'}, {'2026-10-29'}, {'9999-12-31'}, {True}])
+def test_非法待补日期联网前拒绝并保护旧历史(tmp_path, monkeypatch, pending):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    path = tmp_path / FILENAME
+    original = json.dumps(payload()).encode()
+    path.write_bytes(original)
+    with pytest.raises(ValueError, match='日期|待补|范围'):
+        etf_oi.update_history(path, end_date='2026-10-28', pending_dates=pending)
+    assert not calls
+    assert path.read_bytes() == original
+
+
+def test_待补未来日期即使截止日允许也拒绝(tmp_path, monkeypatch):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    path = tmp_path / FILENAME
+    path.write_text(json.dumps(payload()))
+    with pytest.raises(ValueError, match='日期|未来'):
+        etf_oi.update_history(path, end_date='9999-12-31', pending_dates={'9999-12-31'})
+    assert not calls
+
+
+@pytest.mark.parametrize('failure', ['wrong_version', 'outside', 'conflict', 'network'])
+def test_待补源错误或未知日期冲突不得静默当作未齐(tmp_path, monkeypatch, failure):
+    data = payload()
+    data['records'].append(dict(data['records'][1], date='2026-10-28'))
+    if failure == 'wrong_version':
+        data['methodology_id'] = 'legacy'
+    elif failure == 'outside':
+        data['records'].append(dict(data['records'][1], date='2026-10-29'))
+    elif failure == 'conflict':
+        data['records'].append(dict(data['records'][1], ratio_pct=3.0))
+    backend(monkeypatch, data, [])
+    if failure == 'network':
+        def failed(*args):
+            raise OSError('upstream')
+        sys.modules['stock_data'].fetch_csi300_etf_position_history = failed
+    path = tmp_path / FILENAME
+    original = json.dumps(payload()).encode()
+    path.write_bytes(original)
+    with pytest.raises((ValueError, OSError)):
+        etf_oi.update_history(path, end_date='2026-10-28',
+                              pending_dates={'2026-10-26', '2026-10-28'})
+    assert path.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_v1禁止局部迁移且不联网不备份(tmp_path, monkeypatch):
+    calls = []
+    backend(monkeypatch, migration_payload(), calls)
+    path = tmp_path / FILENAME
+    original = v1_bytes()
+    path.write_bytes(original)
+    with pytest.raises(ValueError, match='v1|迁移'):
+        etf_oi.update_history(path, end_date='2026-10-28', pending_dates={'2026-10-27'})
+    assert not calls
+    assert path.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_局部更新缺少历史文件时明确报错(tmp_path, monkeypatch):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    path = tmp_path / FILENAME
+    with pytest.raises(FileNotFoundError):
+        etf_oi.update_history(path, end_date='2026-10-28', pending_dates={'2026-10-27'})
+    assert not calls
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('interval', [True, False, -1, float('nan'), float('inf'), '2', None])
+def test_非法请求间隔在读取历史与联网前拒绝(tmp_path, monkeypatch, interval):
+    calls = []
+    backend(monkeypatch, payload(), calls)
+    with pytest.raises(ValueError, match='interval|间隔'):
+        etf_oi.update_history(tmp_path / FILENAME, pending_dates={'2026-10-27'},
+                              request_interval_seconds=interval)
+    assert not calls

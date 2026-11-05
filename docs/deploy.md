@@ -25,6 +25,7 @@
 | mom-index-web.service | `~/.config/systemd/user/mom-index-web.service` | 标准库静态服务，`WorkingDirectory=frontend/`，端口 8765 |
 | mom-index-frpc.service | `~/.config/systemd/user/mom-index-frpc.service` | 用户级 frpc，配置 `~/.config/mom-index/frpc.toml`（从系统 frpc 模板派生，仅含 mom-index 代理） |
 | mom-index-collect.timer / .service | `~/.config/systemd/user/` | 每日自动采集：每天 15:30 UTC（北京 23:30，覆盖全天帖子），`Persistent=true` 错过补跑 |
+| mom-index-etf-poll.timer / .service | `deploy/systemd/` | 每10分钟检查收盘后待补ETF日期，跨日合并；齐全后只发布一次并停止取数 |
 | frpc 代理 | name=`mom-index-web`，local 127.0.0.1:8765 → remote 8765 | 与 cookie-server/renming 同模式 |
 
 常用命令：
@@ -68,7 +69,7 @@ location /mom/ {
 
 页面数据来自 `frontend/data/dashboard_data.json`（本地生成，gitignore 不入库）。**每日自动刷新**：`mom-index-collect.timer` 每天 15:30 UTC（北京 23:30）跑 pipeline.py，写完 `data/` 自动同步到 `frontend/data/`，静态文件无需重启服务，线上立即生效。周末也会跑（股吧无新帖，结果与周五相同，同日记录被覆盖，幂等无害）。
 
-通知阶段先发完整宝妈报告，再通过 `stock_data` 更新并发送沪深300ETF配置强度代理；运行环境需安装本机共享库及其 pandas/Tushare 依赖。`TUSHARE_TOKEN` 继承 systemd user 环境，只在进程中读取；本次没有写入或更改凭据文件。新增指标的历史、缺失日期说明与单独预览方式见 [运行记录](etf-oi/operations.md)。
+23:30通知阶段只发送完整宝妈报告。ETF从北京时间15点收盘后由独立timer每10分钟补查，取齐即更新网页并发图卡；未齐跨日合并，全部完成后不再取数。份额/NAV请求间隔至少2秒。运行环境沿用本机共享库及其pandas/Tushare依赖，`TUSHARE_TOKEN`继承systemd user环境，只在内存读取。安装、队列恢复与验收见[轮询设计](etf-oi/polling.md)。
 
 网页底部的ETF双曲线与量柱独立读取 `frontend/data/csi300_etf_position.json`，与飞书共用同一计算结果，旧 `etf_oi.json` 保留为旧口径。新指标更新/独立发送后自动原子同步，`sync_data.py` 也支持手动发布。
 

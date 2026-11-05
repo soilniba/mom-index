@@ -5,6 +5,7 @@
 """
 
 from datetime import date, datetime, timedelta, timezone
+import fcntl
 import json
 import math
 import os
@@ -53,8 +54,12 @@ def _preserve_v1(path, original):
             os.unlink(temporary)
 
 
-def update_history(path, end_date=None) -> dict:
-    """已知v1全量重算后保留备份；v2增量更新，失败不覆盖，新旧版本不拼接。"""
+def update_history(path, end_date=None, *, pending_dates=None, request_interval_seconds=0) -> dict:
+    """默认近期重拉或v1全量迁移；指定待补日期时仅合并完整值，未齐不写文件。"""
+    if (isinstance(request_interval_seconds, bool)
+            or not isinstance(request_interval_seconds, (int, float))
+            or not math.isfinite(request_interval_seconds) or request_interval_seconds < 0):
+        raise ValueError('request_interval_seconds请求间隔必须是有限非负数')
     import stock_data
 
     path = Path(path)
@@ -63,18 +68,38 @@ def update_history(path, end_date=None) -> dict:
     original = path.read_bytes() if path.exists() else None
     old = json.loads(original) if original is not None else None
     migrating = isinstance(old, dict) and old.get('methodology_id') == PREVIOUS_METHODOLOGY_ID
+    if pending_dates is not None:
+        if migrating:
+            raise ValueError('v1历史必须全量迁移，禁止局部更新')
+        if old is None:
+            raise FileNotFoundError(f'局部更新需要已有v2历史文件：{path}')
     old_rows = _records(old, PREVIOUS_METHODOLOGY_ID if migrating else METHODOLOGY_ID) if old is not None else []
     previous = [] if migrating else old_rows
-    end = date.fromisoformat(end_date) if end_date else datetime.now(ZoneInfo('Asia/Shanghai')).date()
-    last = max((date.fromisoformat(r['date']) for r in previous), default=START_DATE)
-    start = max(START_DATE, last - timedelta(days=45)) if previous else START_DATE
+    today = datetime.now(ZoneInfo('Asia/Shanghai')).date()
+    end = date.fromisoformat(end_date) if end_date else today
+    if pending_dates is not None:
+        if isinstance(pending_dates, (str, bytes, dict)):
+            raise ValueError('待补日期必须是非空ISO日期集合')
+        try:
+            pending_dates = set(pending_dates)
+            if not pending_dates:
+                raise ValueError('待补日期不能为空')
+            for day in pending_dates:
+                parsed = date.fromisoformat(day)
+                if parsed.isoformat() != day or not START_DATE <= parsed <= min(end, today):
+                    raise ValueError('待补日期超出历史、截止日或未来日期范围')
+        except (TypeError, ValueError) as exc:
+            raise ValueError('待补日期必须是有效范围内的非空ISO日期集合') from exc
+        start, end = date.fromisoformat(min(pending_dates)), date.fromisoformat(max(pending_dates))
+    else:
+        last = max((date.fromisoformat(r['date']) for r in previous), default=START_DATE)
+        start = max(START_DATE, last - timedelta(days=45)) if previous else START_DATE
     if start > end:
         raise ValueError('更新日期早于现有历史')
-    fresh = stock_data.fetch_csi300_etf_position_history(start.strftime('%Y%m%d'), end.strftime('%Y%m%d'))
+    options = {'request_interval_seconds': request_interval_seconds} if request_interval_seconds else {}
+    fresh = stock_data.fetch_csi300_etf_position_history(
+        start.strftime('%Y%m%d'), end.strftime('%Y%m%d'), **options)
     rows = _records(fresh)
-    if not any(r.get('ratio_pct') is not None for r in rows):
-        raise ValueError('请求范围内无完整数据，保留旧历史')
-    merged = {r['date']: r for r in previous}
     seen = {}
     for row in rows:
         day = row['date']
@@ -83,7 +108,14 @@ def update_history(path, end_date=None) -> dict:
         if day in seen and seen[day] != row:
             raise ValueError('同日指标数据冲突')
         seen[day] = row
-        merged[day] = row
+    if pending_dates is not None:
+        rows = [r for r in seen.values() if r['date'] in pending_dates and r.get('ratio_pct') is not None]
+        if not rows:
+            return old
+    elif not any(r.get('ratio_pct') is not None for r in rows):
+        raise ValueError('请求范围内无完整数据，保留旧历史')
+    merged = {r['date']: r for r in previous}
+    merged.update((r['date'], r) for r in rows)
     if migrating and not {r['date'] for r in old_rows} <= seen.keys():
         raise ValueError('v2全量迁移响应缺少已有历史日期，保留v1原文件')
     records = [merged[d] for d in sorted(merged)]
@@ -96,9 +128,19 @@ def update_history(path, end_date=None) -> dict:
                                          suffix='.tmp', delete=False) as output:
             temporary = output.name
             json.dump(result, output, ensure_ascii=False, indent=2, allow_nan=False)
-        if migrating:
-            _preserve_v1(path, original)
-        os.replace(temporary, path)
+        # 所有入口共用目录锁；比较源快照与原子替换必须在同一临界区。
+        # 锁不覆盖联网阶段，慢请求返回旧快照时拒绝覆盖后来已保存的数据。
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            fcntl.flock(directory, fcntl.LOCK_EX)
+            current = path.read_bytes() if path.exists() else None
+            if current != original:
+                raise ValueError('历史已被其他更新修改，拒绝并发旧响应覆盖')
+            if migrating:
+                _preserve_v1(path, original)
+            os.replace(temporary, path)
+        finally:
+            os.close(directory)
     finally:
         if temporary and os.path.exists(temporary):
             os.unlink(temporary)

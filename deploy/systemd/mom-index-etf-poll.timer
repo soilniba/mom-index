@@ -1,0 +1,11 @@
+[Unit]
+Description=每10分钟检查未完成的沪深300 ETF指标
+
+[Timer]
+OnCalendar=*-*-* *:00/10:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1s
+Unit=mom-index-etf-poll.service
+
+[Install]
+WantedBy=timers.target

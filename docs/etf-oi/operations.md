@@ -52,7 +52,7 @@ python scripts/notify_etf_oi.py data --no-refresh
 python -m scripts.daily_reports data
 ```
 
-每日任务保持北京时间23:30运行 `pipeline.py`；通知阶段调用 `scripts.daily_reports.send_reports`，严格串行。
+手动`scripts.daily_reports`仍可串行发送两份报告；当前生产23:30的pipeline仅发送宝妈报告，ETF改为[收盘后10分钟轮询](polling.md)。
 指标更新失败时旧历史不覆盖，卡片标注失败与截至日；绘图/上传失败仍发数值。临时上传PNG随上下文自动删除。
 
 ## 2026-10-31：全部普通ETF/真实自由流通市值

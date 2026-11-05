@@ -79,6 +79,25 @@ def build_card(data, update_failed=False):
     return '\n'.join(lines)
 
 
+def send_etf_oi_card(data, update_failed=False) -> bool:
+    """只发送指定v2结果；不查询行情或修改网页，返回实际发送结果。"""
+    if not isinstance(data, dict) or data.get('methodology_id') != METHODOLOGY_ID:
+        return False
+    image_key = ''
+    if any(r.get('ratio_pct') is not None for r in data.get('records', [])):
+        try:
+            png = chart_png(data['records'])
+            if png:
+                with tempfile.NamedTemporaryFile(suffix='.png') as image:
+                    image.write(png)
+                    image.flush()
+                    image_key = _upload_image(image.name)
+        except Exception as exc:
+            print(f'[etf_oi] 图像生成失败：{type(exc).__name__}', file=sys.stderr)
+    return bool(_send_markdown(build_card(data, update_failed), '沪深300 ETF配置强度代理',
+                               image_key=image_key, image_position='after_title' if image_key else ''))
+
+
 def send_etf_oi_report(data_dir, refresh=True) -> bool:
     path = Path(data_dir) / HISTORY_FILENAME
     failed = False
@@ -106,19 +125,7 @@ def send_etf_oi_report(data_dir, refresh=True) -> bool:
         publish_etf_oi(data_dir)
     except OSError as exc:
         print(f'[etf_oi] 网页同步失败：{type(exc).__name__}', file=sys.stderr)
-    image_key = ''
-    if valid:
-        try:
-            png = chart_png(data['records'])
-            if png:
-                with tempfile.NamedTemporaryFile(suffix='.png') as image:
-                    image.write(png)
-                    image.flush()
-                    image_key = _upload_image(image.name)
-        except Exception as exc:
-            print(f'[etf_oi] 图像生成失败：{type(exc).__name__}', file=sys.stderr)
-    sent = _send_markdown(build_card(data, failed), '沪深300 ETF配置强度代理',
-                          image_key=image_key, image_position='after_title' if image_key else '')
+    sent = send_etf_oi_card(data, update_failed=failed)
     return bool(sent and valid and not failed and not blocked)
 
 

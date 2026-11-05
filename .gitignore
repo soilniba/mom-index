@@ -16,6 +16,7 @@ build/
 
 # 数据文件（运行时生成，不入 git：避免泄露 xsec_token 等触发 GitGuardian 误报）
 data/*.json
+data/.etf-poll.lock
 frontend/data/*.json
 
 # 环境
