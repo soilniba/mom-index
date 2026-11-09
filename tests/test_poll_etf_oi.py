@@ -109,6 +109,43 @@ def run(e, now):
     return e.poll.run_poll(e.data, now=at(now))
 
 
+def test_已完成日期被手动刷新退化后重新入队而不漏补(env):
+    env.values['2026-11-04'] = 1.9
+    assert run(env, '2026-11-04T15:00:00') == 0
+    assert read_state(env)['pending_dates'] == []
+    data = json.loads((env.data / HISTORY).read_text())
+    data['records'][-1].update(ratio_pct=None, missing=['share_or_nav'])
+    data['as_of'] = '2026-11-03'
+    (env.data / HISTORY).write_text(json.dumps(data))
+    env.values['2026-11-04'] = 2.0
+    assert run(env, '2026-11-04T15:10:00') == 0
+    assert len(env.quote_calls) == 2
+    assert env.quote_calls[-1] == ('20261104', '20261104', 2)
+    assert read_state(env)['pending_dates'] == []
+    assert env.sent[-1]['records'][-1]['ratio_pct'] == 2.0
+
+
+@pytest.mark.parametrize('remove_row', [False, True])
+def test_待发送日期退化后撤回待发并继续补查(env, remove_row):
+    env.values['2026-11-04'] = 1.9
+    env.send_result = False
+    assert run(env, '2026-11-04T15:00:00') == 1
+    data = json.loads((env.data / HISTORY).read_text())
+    if remove_row:
+        data['records'].pop()
+    else:
+        data['records'][-1].update(ratio_pct=None, missing=['share_or_nav'])
+    data['as_of'] = '2026-11-03'
+    (env.data / HISTORY).write_text(json.dumps(data))
+    env.values['2026-11-04'] = None
+    assert run(env, '2026-11-04T15:10:00') == 0
+    assert len(env.quote_calls) == 2
+    state = read_state(env)
+    assert state['pending_dates'] == ['2026-11-04']
+    assert state['notify_pending'] is False and state['notify_dates'] == []
+    assert len(env.sent) == 1
+
+
 def test_收盘前不登记当天或请求行情且不追旧研究缺口(env):
     assert run(env, '2026-11-04T14:59:59') == 0
     state = read_state(env)

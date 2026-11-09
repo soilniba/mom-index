@@ -124,6 +124,14 @@ def _run_locked(data_dir, now):
             _write_state(state_path, state)
             saved = copy.deepcopy(state)
 
+    # 手动刷新可能如实写回源缺口；已完成日期退化后也必须恢复补查。
+    incomplete = {row['date'] for row in data['records']
+                  if row.get('ratio_pct') is None
+                  and state['tracking_start'] <= row['date'] <= state['queued_through']}
+    incomplete.update(set(state['notify_dates']) - complete)
+    state['pending_dates'] = sorted(set(state['pending_dates']) | incomplete)
+    state['notify_dates'] = sorted(set(state['notify_dates']) - incomplete)
+    state['notify_pending'] = bool(state['notify_dates'])
     # 更新器已保存、进程尚未保存队列就退出时，也能恢复发布而不重复取数。
     _finish_completed(state, complete)
     if not set(state['notify_dates']) <= complete:

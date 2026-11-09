@@ -95,6 +95,7 @@ mom-index/
 - [ETF 网页版本兼容与缓存修复](docs/etf-oi/web-cache.md)
 - [ETF 每日更新停滞修复](docs/etf-oi/daily-refresh.md)
 - [ETF 收盘后持续轮询](docs/etf-oi/polling.md)
+- [ETF共享接口与全部调用方核查](docs/etf-oi/caller-audit.md)
 - [LLM 分类器](docs/llm-classifier.md)
 - [部署](docs/deploy.md)
 - [小红书 Cookie](docs/xhs-cookie.md)
