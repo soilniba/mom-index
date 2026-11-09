@@ -99,3 +99,10 @@ journalctl --user -u mom-index-etf-poll.service -n 20 --no-pager
   2.1841152594482685%，网页同步成功，飞书发送成功，pending/notify队列均清空。
 - 当前早于11月5日收盘，不加入当日任务；今日15点后由同一队列登记新日期。
 - 原23:30采集timer保持active，只发送宝妈日报；新增timer持续每10分钟唤醒。
+
+## 2026-11-09 部署验收（北京时间23:26）
+
+- 提交`25a7b44`已推送origin master；`./remote.sh deploy`远端开发副本184项通过，生产工作树由`f2e1e13`快进到`25a7b44`。
+- 两份unit已复制到N100的`~/.config/systemd/user/`，执行`daemon-reload`并重启定时器；`systemd-analyze`与`list-timers`显示下一次为北京时间23:30，之后每10分钟；0:00至8:00无触发。
+- 部署前后`data/etf_poll_state.json`校验和一致（`26f1c3f6…`），部署本身不改写队列；待查日期仍为2026-11-09，不重新登记。
+- 待观察：当晚23:30、23:40、23:50按10分钟时段继续尝试该日（数据通常次日早上才出，这几次预计仍不齐）；北京时间11月10日08:00起定时器恢复，取齐后应更新网页并发送图卡。用`./remote.sh logs etf-poll`核对。
