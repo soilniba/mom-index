@@ -152,12 +152,18 @@ def test_北京时间8点前不登记不请求不写状态(env):
     assert env.calendar_calls == env.quote_calls == env.sent == []
 
 
-def test_当天收盘后不登记当天且不请求行情(env):
-    assert run(env, '2026-11-04T15:00:00') == 0
+def test_当天上午不登记当天且不请求行情(env):
+    assert run(env, '2026-11-04T09:00:00') == 0
     state = read_state(env)
     assert state['tracking_start'] == '2026-11-04'
     assert state['queued_through'] == '2026-11-03'
     assert state['pending_dates'] == []
+    assert env.calendar_calls == env.quote_calls == env.sent == []
+
+
+def test_北京时间10点后不登记不请求不写状态(env):
+    assert run(env, '2026-11-05T10:00:01') == 0
+    assert not (env.data / STATE).exists()
     assert env.calendar_calls == env.quote_calls == env.sent == []
 
 
@@ -210,15 +216,15 @@ def test_未齐每10分钟重试完整后停止且不发送陈旧卡(env):
     assert (env.data / STATE).read_bytes() == before
 
 
-def test_夜间暂停且跨午夜重启后次日8点合并同一队列同批只发一张(env):
+def test_十点后暂停且跨午夜重启后次日8点合并同一队列同批只发一张(env):
     assert run(env, '2026-11-05T08:00:00') == 0
     env.poll = importlib.reload(env.poll)
-    assert run(env, '2026-11-05T23:50:00') == 0
+    assert run(env, '2026-11-05T10:10:00') == 0
     assert read_state(env)['pending_dates'] == ['2026-11-04']
-    assert len(env.quote_calls) == 2
+    assert len(env.quote_calls) == 1
     assert run(env, '2026-11-06T00:00:00') == 0
     assert run(env, '2026-11-06T07:59:59') == 0
-    assert len(env.quote_calls) == 2
+    assert len(env.quote_calls) == 1
     assert read_state(env)['pending_dates'] == ['2026-11-04']
     env.values.update({'2026-11-04': 1.9, '2026-11-05': 2.0})
     assert run(env, '2026-11-06T08:10:00') == 0

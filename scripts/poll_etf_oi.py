@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""北京时间每天8点起每10分钟补查待齐ETF日期，完整后发布并停止该日查询。"""
+"""北京时间每天8:00至10:00每10分钟补查待齐ETF日期，完整后发布并停止该日查询。"""
 
 import argparse
 import copy
@@ -21,8 +21,9 @@ BEIJING = ZoneInfo('Asia/Shanghai')
 STATE_FILENAME = 'etf_poll_state.json'
 LOCK_FILENAME = '.etf-poll.lock'
 POLL_INTERVAL_SECONDS = 600
-# ETF份额通常在北京时间次日8-9点更新，8点前不登记、不联网。
+# ETF份额通常在北京时间次日8-9点更新：8:00起登记并查询，10:00（含）之后不联网。
 POLL_START_HOUR = 8
+POLL_END_HOUR = 10
 
 
 def _day(value):
@@ -106,8 +107,13 @@ def _log_error(stage, exc):
     print(f'[etf_poll] {stage}：{type(exc).__name__}', file=sys.stderr)
 
 
+def _in_poll_window(now):
+    # 窗口外不登记、不联网、不写状态；未齐日期保留到下一个窗口。
+    return POLL_START_HOUR <= now.hour and (now.hour, now.minute) <= (POLL_END_HOUR, 0)
+
+
 def _run_locked(data_dir, now):
-    if now.hour < POLL_START_HOUR:
+    if not _in_poll_window(now):
         return 0
     history_path = data_dir / HISTORY_FILENAME
     data, complete = _read_history(history_path)
