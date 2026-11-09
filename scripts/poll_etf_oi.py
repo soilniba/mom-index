@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""北京时间收盘后每10分钟补查待齐ETF日期，完整后发布并停止该日查询。"""
+"""北京时间每天8点起每10分钟补查待齐ETF日期，完整后发布并停止该日查询。"""
 
 import argparse
 import copy
@@ -21,6 +21,8 @@ BEIJING = ZoneInfo('Asia/Shanghai')
 STATE_FILENAME = 'etf_poll_state.json'
 LOCK_FILENAME = '.etf-poll.lock'
 POLL_INTERVAL_SECONDS = 600
+# ETF份额通常在北京时间次日8-9点更新，8点前不登记、不联网。
+POLL_START_HOUR = 8
 
 
 def _day(value):
@@ -105,6 +107,8 @@ def _log_error(stage, exc):
 
 
 def _run_locked(data_dir, now):
+    if now.hour < POLL_START_HOUR:
+        return 0
     history_path = data_dir / HISTORY_FILENAME
     data, complete = _read_history(history_path)
     state_path = data_dir / STATE_FILENAME
@@ -137,7 +141,8 @@ def _run_locked(data_dir, now):
     if not set(state['notify_dates']) <= complete:
         raise ValueError('待发日期缺少完整数据，拒绝发送陈旧图卡')
     save()
-    cutoff = now.date() if now.hour >= 15 else now.date() - timedelta(days=1)
+    # 8点后只登记前一自然日：当天收盘后的份额数据要等到次日早上才更新。
+    cutoff = now.date() - timedelta(days=1)
     registration_start = max(_day(state['tracking_start']),
                              _day(state['queued_through']) + timedelta(days=1))
     register = registration_start <= cutoff

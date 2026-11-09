@@ -1,5 +1,5 @@
 [Unit]
-Description=补查收盘后未齐的沪深300 ETF指标
+Description=补查未齐的沪深300 ETF指标（北京时间每日8点起）
 
 [Service]
 Type=oneshot
