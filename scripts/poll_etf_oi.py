@@ -109,7 +109,8 @@ def _log_error(stage, exc):
 
 def _in_poll_window(now):
     # 窗口外不登记、不联网、不写状态；未齐日期保留到下一个窗口。
-    return POLL_START_HOUR <= now.hour and (now.hour, now.minute) <= (POLL_END_HOUR, 0)
+    # 精确到秒：10:00:00 那次 timer 触发仍查询，10:00:01 起不再联网。
+    return POLL_START_HOUR <= now.hour and (now.hour, now.minute, now.second) <= (POLL_END_HOUR, 0, 0)
 
 
 def _run_locked(data_dir, now):
